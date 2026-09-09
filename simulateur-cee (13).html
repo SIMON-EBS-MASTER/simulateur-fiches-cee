@@ -1,0 +1,2317 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulateur CEE — EBS Énergie</title>
+<style>
+  :root{
+    --navy:#1B3A5C; --navy-dk:#12283F; --navy-lt:#2E6096;
+    --green:#1E6B3A; --green-bg:#E9F4EC;
+    --blue:#1A4A7A; --blue-bg:#EAF1F9;
+    --orange:#D97706; --orange-bg:#FFF3CD;
+    --bg:#F5F7FA; --panel:#FFFFFF; --border:#DDE3EA; --border-dk:#C4CDD8;
+    --text:#1A2530; --text-2:#5B6B7B; --text-3:#8A97A5;
+    --red:#B3261E; --red-bg:#FBEAEA;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--text); font-size:14px; line-height:1.5;
+  }
+  .app{max-width:1180px;margin:0 auto;padding:28px 20px 60px}
+
+  /* ── Header ── */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;flex-wrap:wrap;gap:12px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand-mark{width:38px;height:38px;border-radius:9px;background:linear-gradient(135deg,var(--navy),var(--navy-lt));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex-shrink:0}
+  .brand-text h1{font-size:17px;font-weight:600;margin:0;color:var(--navy-dk)}
+  .brand-text p{font-size:12px;color:var(--text-3);margin:1px 0 0}
+  .stat-pill{font-size:12px;color:var(--text-2);background:var(--panel);border:1px solid var(--border);
+    padding:6px 12px;border-radius:20px;font-variant-numeric:tabular-nums}
+  .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .sources-link{font-size:12px;color:var(--text-3);background:none;border:none;cursor:pointer;
+    text-decoration:underline;text-underline-offset:2px;font-family:inherit;padding:4px;
+    display:inline-block;margin-top:2px}
+  .sources-link:hover{color:var(--navy-lt)}
+
+  /* ── Modale Sources ── */
+  .sources-overlay{position:fixed;inset:0;background:rgba(18,40,63,0.4);display:none;align-items:center;
+    justify-content:center;z-index:120;padding:30px 16px;backdrop-filter:blur(2px)}
+  .sources-overlay.open{display:flex}
+  .sources-panel{background:var(--panel);border-radius:16px;width:100%;max-width:720px;max-height:86vh;
+    box-shadow:0 20px 60px rgba(0,0,0,0.25);display:flex;flex-direction:column;overflow:hidden}
+  .sources-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;
+    align-items:center;justify-content:space-between;flex-shrink:0}
+  .sources-header h3{font-size:16px;margin:0;color:var(--navy-dk)}
+  .sources-header p{font-size:11.5px;color:var(--text-3);margin:2px 0 0}
+  .sources-body{overflow-y:auto;flex:1;padding:16px 22px}
+  .source-card{border:1px solid var(--border);border-radius:10px;padding:12px 15px;margin-bottom:10px}
+  .source-card .sc-code{font-size:13px;font-weight:700;color:var(--navy-dk)}
+  .source-card .sc-version{font-size:11px;color:var(--text-3);margin-left:8px}
+  .source-card .sc-detail{font-size:11.5px;color:var(--text-2);margin-top:5px;line-height:1.5}
+  .source-card .sc-detail b{color:var(--text)}
+  .sources-disclaimer{background:var(--bg);border:1px solid var(--border);border-radius:10px;
+    padding:12px 15px;margin-top:14px;font-size:11px;color:var(--text-2);line-height:1.6}
+
+  /* ── Search ── */
+  .search-wrap{position:relative;margin-bottom:18px}
+  .search-input{width:100%;padding:13px 16px 13px 42px;font-size:14.5px;border:1.5px solid var(--border-dk);
+    border-radius:10px;background:var(--panel);color:var(--text);outline:none;transition:border-color .15s}
+  .search-input:focus{border-color:var(--navy-lt)}
+  .search-icon{position:absolute;left:15px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none}
+
+  /* ── Prix par défaut (appliqués à toutes les simulations) ── */
+  .default-prices-card{background:var(--panel);border:1.5px solid var(--border-dk);border-radius:12px;
+    padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+  .dpc-label{font-size:12.5px;font-weight:700;color:var(--navy-dk);white-space:nowrap}
+  .dpc-label .hint{display:block;font-weight:400;color:var(--text-3);font-size:10.5px;margin-top:1px}
+  .dpc-fields{display:flex;gap:14px;flex:1;flex-wrap:wrap}
+  .dpc-field{flex:1;min-width:150px}
+  .dpc-field label{display:block;font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px}
+  .dpc-field input{width:100%;padding:8px 11px;border:1.5px solid var(--border-dk);border-radius:8px;
+    font-size:13px;background:#FCFDFE;color:var(--text);outline:none;font-family:inherit}
+  .dpc-field input:focus{border-color:var(--navy-lt)}
+  .dpc-saved{font-size:10.5px;color:var(--green);font-weight:600;opacity:0;transition:opacity .2s;white-space:nowrap}
+  .dpc-saved.show{opacity:1}
+
+  /* ── Filter chips ── */
+  .chips{display:flex;gap:8px;margin-bottom:22px;flex-wrap:wrap}
+  .chip{padding:6px 13px;border-radius:16px;font-size:12.5px;font-weight:500;border:1px solid var(--border-dk);
+    background:var(--panel);color:var(--text-2);cursor:pointer;transition:all .12s;user-select:none}
+  .chip:hover{border-color:var(--navy-lt);color:var(--navy)}
+  .chip.active{background:var(--navy);border-color:var(--navy);color:#fff}
+
+  /* ── Fiche grid ── */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(255px,1fr));gap:12px;margin-bottom:8px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 17px;cursor:pointer;
+    transition:box-shadow .15s, border-color .15s, transform .1s}
+  .card:hover{border-color:var(--navy-lt);box-shadow:0 3px 14px rgba(27,58,92,0.08);transform:translateY(-1px)}
+  .card.selected{border-color:var(--navy);box-shadow:0 0 0 2px rgba(27,58,92,0.12)}
+  .card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .card-code{font-size:14px;font-weight:700;color:var(--navy-dk);letter-spacing:.2px}
+  .sector-tag{font-size:10px;font-weight:600;padding:2px 7px;border-radius:5px;text-transform:uppercase;letter-spacing:.03em}
+  .sector-res{background:var(--green-bg);color:var(--green)}
+  .sector-ter{background:var(--blue-bg);color:var(--blue)}
+  .card-title{font-size:12.5px;color:var(--text-2);margin-bottom:10px;min-height:32px}
+  .card-meta{display:flex;gap:6px;flex-wrap:wrap}
+  .meta-tag{font-size:10.5px;color:var(--text-3);background:var(--bg);padding:2px 7px;border-radius:5px;border:1px solid var(--border)}
+  .no-results{text-align:center;padding:50px 20px;color:var(--text-3);font-size:13.5px}
+
+  /* ── Simulator panel ── */
+  .sim-overlay{position:fixed;inset:0;background:rgba(18,40,63,0.35);display:none;align-items:flex-start;
+    justify-content:center;z-index:100;padding:40px 16px;overflow-y:auto;backdrop-filter:blur(2px)}
+  .sim-overlay.open{display:flex}
+  .sim-panel{background:var(--panel);border-radius:16px;max-width:640px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);
+    animation:slideUp .18s ease-out}
+  .sim-panel.wide{max-width:860px}
+  @keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  .sim-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .sim-header-l h2{font-size:16px;margin:0 0 2px;color:var(--navy-dk)}
+  .sim-header-l p{font-size:12px;color:var(--text-3);margin:0}
+  .close-btn{width:34px;height:34px;border-radius:9px;border:1.5px solid #F2B8B5;background:var(--red-bg);
+    color:var(--red);font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;
+    justify-content:center;transition:all .12s;flex-shrink:0}
+  .close-btn:hover{background:var(--red);color:#fff;border-color:var(--red)}
+  .sim-body{padding:22px 24px}
+  .cond-box{background:var(--red-bg);border:1px solid #EFC9C6;border-radius:9px;padding:11px 14px;margin-bottom:18px;
+    font-size:12px;color:var(--red);line-height:1.55}
+  .cond-box b{font-weight:700}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:6px}
+  .field .hint{font-weight:400;color:var(--text-3);font-size:11px}
+  .field input, .field select{width:100%;padding:9px 11px;border:1.5px solid var(--border-dk);border-radius:8px;
+    font-size:13.5px;background:#FCFDFE;color:var(--text);outline:none;font-family:inherit}
+  .field input:focus, .field select:focus{border-color:var(--navy-lt)}
+  .divider{height:1px;background:var(--border);margin:18px 0}
+  .results{display:flex;flex-direction:column;gap:8px}
+  .result-row{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;border-radius:9px;
+    background:var(--bg);border:1px solid var(--border)}
+  .result-row.hi{background:var(--green-bg);border-color:#B9DCC2}
+  .result-row.hi .result-val{color:var(--green)}
+  .result-row.cdp{background:var(--orange-bg);border-color:#EAD08E}
+  .result-row.cdp .result-val{color:var(--orange)}
+  .result-row.prec{background:var(--blue-bg);border-color:#B9CDE5}
+  .result-row.prec .result-val{color:var(--blue)}
+  .result-label{font-size:12.5px;color:var(--text-2);font-weight:500}
+  .result-val{font-size:17px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+  .result-sub{font-size:10.5px;color:var(--text-3);margin-top:1px}
+  .source-note{margin-top:16px;font-size:10.5px;color:var(--text-3);line-height:1.5;padding-top:12px;border-top:1px solid var(--border)}
+
+  /* ── Barème tables (style Excel) ── */
+  .bareme-toggle{display:flex;align-items:center;gap:7px;width:100%;margin-top:16px;padding:10px 14px;
+    border:1.5px dashed var(--border-dk);border-radius:9px;background:none;color:var(--navy);
+    font-size:12.5px;font-weight:600;cursor:pointer;transition:all .12s;font-family:inherit}
+  .bareme-toggle:hover{border-color:var(--navy-lt);background:var(--bg)}
+  .bareme-toggle svg{transition:transform .15s}
+  .bareme-toggle.expanded svg{transform:rotate(90deg)}
+  .bareme-wrap{margin-top:14px;overflow-x:auto;border:1px solid var(--border);border-radius:10px;display:none}
+  .bareme-wrap.open{display:block}
+  table.bareme{width:100%;border-collapse:collapse;font-size:11.5px;min-width:560px}
+  table.bareme th{background:var(--navy);color:#fff;font-weight:600;padding:8px 9px;text-align:center;
+    white-space:nowrap;font-size:10.5px}
+  table.bareme th.sub{background:var(--navy-lt);font-size:10px;font-weight:600}
+  table.bareme td{padding:7px 9px;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap;
+    font-variant-numeric:tabular-nums}
+  table.bareme .grp-hdr td{background:#EEF2F6;font-weight:700;color:var(--navy-dk);text-align:left;
+    font-size:10.5px;padding:6px 9px}
+  table.bareme .zone-cell{color:#fff;font-weight:700;font-size:12px}
+
+  /* ── Aperçu ±2m² (BAR-TH-168) ── */
+  .surf-preview{margin-top:14px}
+  .surf-preview-title{font-size:11.5px;font-weight:700;color:var(--navy-dk);margin-bottom:8px}
+  table.surftbl{width:100%;border-collapse:collapse;font-size:12px}
+  table.surftbl th{background:var(--navy);color:#fff;font-weight:600;padding:7px 9px;text-align:center;font-size:10.5px}
+  table.surftbl td{padding:7px 9px;text-align:center;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums}
+  table.surftbl tr:nth-child(odd) td{background:#FAFBFC}
+  table.surftbl tr.hl td{background:#FFF6DD!important;box-shadow:inset 0 0 0 1.5px #E8C15A;font-weight:700}
+  table.surftbl td.prime-val{color:var(--green);font-weight:700}
+
+  /* ── Bloc "Comparer avec un écart" — générique, piloté par l'utilisateur ── */
+  .adj-block{margin-top:16px;border:1.5px dashed var(--border-dk);border-radius:10px;padding:14px 16px}
+  .adj-title{font-size:12px;font-weight:700;color:var(--navy-dk);margin-bottom:10px}
+  .adj-fields{display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+  .adj-field{flex:1;min-width:140px}
+  .adj-field label{display:block;font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:4px}
+  .adj-field input{width:100%;padding:8px 10px;border:1.5px solid var(--border-dk);border-radius:8px;
+    font-size:13px;background:#FCFDFE;color:var(--text);outline:none;font-family:inherit}
+  .adj-field input:focus{border-color:var(--navy-lt)}
+  .adj-field .hint{font-weight:400;color:var(--text-3);font-size:10px}
+  table.bareme .z-h1{background:#E8511A}
+  table.bareme .z-h2{background:#2E7D32}
+  table.bareme .z-h3{background:#1565C0}
+  table.bareme tr.alt td:not(.zone-cell){background:#FAFBFC}
+  table.bareme td.num-c{color:var(--green);font-weight:700}
+  table.bareme td.num-p{color:var(--blue);font-weight:700}
+  table.bareme td.num-cdp{color:var(--orange);font-weight:700}
+  table.bareme tr.hl td:not(.zone-cell){background:#FFF6DD!important;box-shadow:inset 0 0 0 1.5px #E8C15A}
+  table.bareme tr.hl td.zone-cell{box-shadow:inset 0 0 0 2.5px #E8C15A}
+
+  /* ── Actions bar (Ajouter au comparatif / Télécharger PDF) ── */
+  .sim-actions{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
+  .btn-secondary{flex:1;min-width:180px;padding:10px 14px;border:1.5px solid var(--border-dk);border-radius:9px;
+    background:var(--panel);color:var(--navy-dk);font-size:12.5px;font-weight:600;cursor:pointer;
+    transition:all .12s;font-family:inherit}
+  .btn-secondary:hover{border-color:var(--navy-lt);background:var(--bg)}
+  .btn-secondary.added{background:var(--green-bg);border-color:#B9DCC2;color:var(--green)}
+
+  /* ── Menu déroulant "Télécharger PDF" ── */
+  .pdf-dropdown{position:relative;flex:1;min-width:180px}
+  .pdf-dropdown .btn-secondary{width:100%}
+  .pdf-menu{position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--panel);
+    border:1.5px solid var(--border-dk);border-radius:9px;box-shadow:0 10px 24px rgba(0,0,0,0.14);
+    z-index:60;display:none;overflow:hidden}
+  .pdf-menu.open{display:block}
+  .pdf-menu button{display:block;width:100%;text-align:left;padding:10px 14px;border:none;background:none;
+    font-size:12px;color:var(--text);cursor:pointer;font-family:inherit;border-bottom:1px solid var(--border)}
+  .pdf-menu button:last-child{border-bottom:none}
+  .pdf-menu button:hover{background:var(--bg)}
+  .pdf-menu button.pdf-opt-all{font-weight:700;color:var(--navy-dk)}
+  .bareme-actions-row{display:flex;gap:8px;align-items:stretch;margin-top:16px}
+  .bareme-actions-row .bareme-toggle{margin-top:0;flex:1}
+  .btn-pdf-sm{padding:0 14px;border:1.5px solid var(--border-dk);border-radius:9px;background:var(--panel);
+    color:var(--navy-dk);font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;
+    transition:all .12s}
+  .btn-pdf-sm:hover{border-color:var(--navy-lt);background:var(--bg)}
+
+  /* ── Warning box (seuils minimums) ── */
+  .warn-box{background:#FFF3CD;border:1px solid #EAD08E;border-radius:9px;padding:11px 14px;margin-top:12px;
+    font-size:12px;color:#7A5510;line-height:1.5;display:none}
+  .warn-box.show{display:block}
+  .warn-box b{font-weight:700}
+
+  /* ── Cart bar (panier de comparatif) ── */
+  .cart-bar{position:fixed;bottom:22px;left:22px;background:var(--navy);color:#fff;padding:12px 18px;
+    border-radius:30px;box-shadow:0 8px 24px rgba(18,40,63,0.28);display:none;align-items:center;gap:10px;
+    cursor:pointer;font-size:13px;font-weight:600;z-index:90;transition:transform .12s}
+  .cart-bar:hover{transform:translateY(-2px)}
+  .cart-bar.show{display:flex}
+  .cart-badge{background:var(--orange);color:#fff;border-radius:50%;width:20px;height:20px;display:flex;
+    align-items:center;justify-content:center;font-size:11px;font-weight:700}
+
+  /* ── Cart panel — modal comparatif visuel (centré, style tableau Apple) ── */
+  .cart-overlay{position:fixed;inset:0;background:rgba(18,40,63,0.4);display:none;align-items:center;
+    justify-content:center;z-index:110;padding:30px 16px;backdrop-filter:blur(2px)}
+  .cart-overlay.open{display:flex}
+  .cart-panel{background:var(--panel);border-radius:16px;width:100%;max-width:1040px;max-height:86vh;
+    box-shadow:0 20px 60px rgba(0,0,0,0.25);display:flex;flex-direction:column;overflow:hidden;
+    animation:slideUp .18s ease-out}
+  .cart-panel-header{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;
+    align-items:center;justify-content:space-between;flex-shrink:0}
+  .cart-panel-header h3{font-size:16px;margin:0;color:var(--navy-dk)}
+  .cart-panel-header p{font-size:11.5px;color:var(--text-3);margin:2px 0 0}
+  .cart-list{overflow:auto;flex:1;padding:18px 22px}
+  .cart-empty{text-align:center;color:var(--text-3);font-size:13px;padding:60px 20px}
+  .dossier-total{background:var(--navy);color:#fff;padding:12px 16px;border-radius:10px;
+    font-size:14px;margin-bottom:14px;text-align:center}
+  .dossier-total b{font-size:17px;color:#FFD98A}
+
+  /* ── Cahier des charges (checklist BAR-TH-168) ── */
+  .checklist-section{margin-top:14px}
+  .checklist-cat{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;
+    color:var(--navy-dk);margin:14px 0 6px}
+  .checklist-item{font-size:12px;color:var(--text);padding:3px 0 3px 4px;line-height:1.5}
+  .checklist-refused{background:var(--red-bg);border:1px solid #EFC9C6;border-radius:8px;
+    padding:9px 12px;margin-top:8px;font-size:11.5px;color:var(--red)}
+
+  /* Tableau comparatif — colonnes côte à côte, style comparateur de produits */
+  .compare-grid{display:flex;gap:14px;align-items:flex-start;min-width:min-content}
+  .compare-col{background:var(--bg);border:1px solid var(--border);border-radius:12px;
+    width:230px;flex-shrink:0;overflow:hidden}
+  .compare-col-head{background:var(--navy);color:#fff;padding:12px 14px;position:relative}
+  .compare-col-head .cc-code{font-size:13px;font-weight:700}
+  .compare-col-head .cc-title{font-size:10.5px;opacity:.85;margin-top:2px;line-height:1.4}
+  .compare-col-head .cc-date{font-size:9.5px;opacity:.65;margin-top:4px}
+  .compare-col-remove{position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.15);border:none;
+    color:#fff;width:20px;height:20px;border-radius:50%;cursor:pointer;font-size:12px;line-height:1}
+  .compare-col-remove:hover{background:rgba(255,255,255,0.3)}
+  .compare-section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+    color:var(--text-3);padding:10px 14px 4px}
+  .compare-row{padding:6px 14px;font-size:11.5px;border-bottom:1px solid var(--border);display:flex;
+    flex-direction:column;gap:1px}
+  .compare-row .cr-label{color:var(--text-3);font-size:10px}
+  .compare-row .cr-value{color:var(--text);font-weight:600}
+  .compare-row.result .cr-value{color:var(--green);font-weight:700;font-size:13px}
+  .compare-add-hint{width:230px;flex-shrink:0;border:1.5px dashed var(--border-dk);border-radius:12px;
+    display:flex;align-items:center;justify-content:center;text-align:center;color:var(--text-3);
+    font-size:11.5px;padding:20px;min-height:180px}
+
+  .cart-panel-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;
+    align-items:center;flex-shrink:0;flex-wrap:wrap}
+  .cart-panel-footer button{padding:10px 16px;border-radius:9px;font-size:12.5px;font-weight:600;
+    cursor:pointer;font-family:inherit;border:1.5px solid var(--border-dk);background:var(--panel)}
+  .cart-panel-footer .btn-primary{background:var(--navy);color:#fff;border-color:var(--navy)}
+  .cart-panel-footer .legal-mini{flex:1;font-size:10px;color:var(--text-3);line-height:1.4;min-width:200px}
+
+  /* ── Avertissements légaux ── */
+  .legal-note{background:#F1F4F8;border:1px solid var(--border);border-radius:9px;padding:10px 13px;
+    margin-top:16px;font-size:10.5px;color:var(--text-2);line-height:1.55}
+  .legal-note b{color:var(--text)}
+  .site-footer{max-width:1180px;margin:36px auto 0;padding:20px 20px 0;border-top:1px solid var(--border)}
+  .site-footer p{font-size:11px;color:var(--text-3);line-height:1.7;margin:0 0 14px}
+  .site-footer b{color:var(--text-2)}
+
+  /* ── Print area (utilisée uniquement lors de l'impression / export PDF) ── */
+  #printArea{display:none}
+  .print-doc-header{border-bottom:2px solid #1B3A5C;padding-bottom:10px;margin-bottom:16px}
+  .print-doc-header h1{font-size:16px;color:#1B3A5C;margin:0 0 3px}
+  .print-doc-header p{font-size:10.5px;color:#5B6B7B;margin:0}
+  .print-fiche-title{font-size:14px;font-weight:700;color:#1B3A5C;margin:16px 0 8px}
+  .print-section-title{font-size:10.5px;font-weight:700;color:#fff;background:#2E6096;
+    padding:5px 9px;margin:12px 0 0;text-transform:uppercase;letter-spacing:.03em}
+  .print-table{width:100%;border-collapse:collapse;margin-bottom:6px;font-size:11px}
+  .print-table td{padding:6px 8px;border-bottom:1px solid #DDE3EA}
+  .print-table td.pt-label{color:#5B6B7B;width:55%}
+  .print-table td.pt-value{font-weight:600;text-align:right}
+  .print-table.results td.pt-value{color:#1E6B3A;font-size:12.5px}
+  .print-footer{margin-top:18px;font-size:9.5px;color:#8A97A5;border-top:1px solid #DDE3EA;padding-top:8px}
+  .print-page-break{page-break-after:always}
+  @media print{
+    body *{visibility:hidden}
+    #printArea, #printArea *{visibility:visible}
+    #printArea{display:block;position:absolute;left:0;top:0;width:100%;padding:16px}
+    #printArea table.bareme, #printArea table.surftbl,
+    #printArea .zone-cell, #printArea tr.hl td{
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+  }
+
+  /* ── Sous-domaines (navigation par catégorie) ── */
+  .subdomain-section{margin-bottom:26px}
+  .subdomain-title{font-size:13.5px;font-weight:700;color:var(--navy-dk);margin-bottom:12px;
+    display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid var(--border)}
+  .subdomain-count{background:var(--bg);color:var(--text-3);font-size:11px;font-weight:600;
+    padding:2px 9px;border-radius:12px;border:1px solid var(--border)}
+  .empty-sector{text-align:center;padding:50px 20px;color:var(--text-3);font-size:13px;
+    background:var(--panel);border:1px dashed var(--border-dk);border-radius:12px;line-height:1.7}
+  .chip.empty-chip{opacity:.6}
+  .chip.empty-chip::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;
+    background:var(--text-3);margin-left:6px;vertical-align:middle}
+
+  /* ── Info-bulles (glossaire CEE) ── */
+  .info-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;
+    border-radius:50%;background:var(--border-dk);color:#fff;font-size:9px;font-weight:700;
+    margin-left:5px;cursor:help;position:relative;vertical-align:middle;font-style:normal}
+  .info-icon:hover{background:var(--navy-lt)}
+  .info-icon .tip{visibility:hidden;opacity:0;position:absolute;bottom:135%;left:50%;
+    transform:translateX(-50%);background:var(--navy-dk);color:#fff;font-size:10.5px;font-weight:400;
+    line-height:1.5;padding:9px 11px;border-radius:8px;width:215px;z-index:30;transition:opacity .12s;
+    pointer-events:none;text-align:left;box-shadow:0 6px 18px rgba(0,0,0,0.2)}
+  .info-icon .tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+    border:5px solid transparent;border-top-color:var(--navy-dk)}
+  .info-icon:hover .tip{visibility:visible;opacity:1}
+
+  /* ── Bouton Réinitialiser ── */
+  .btn-reset{padding:10px 14px;border:1.5px solid var(--border-dk);border-radius:9px;background:none;
+    color:var(--text-2);font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;
+    transition:all .12s;flex-shrink:0}
+  .btn-reset:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+
+  /* ── Optimisation mobile ── */
+  @media (max-width: 560px){
+    .app{padding:18px 14px 50px}
+    .field-row{grid-template-columns:1fr}
+    .sim-body{padding:18px 16px}
+    .sim-header{padding:16px 18px}
+    .sim-overlay{padding:16px 8px}
+    .dpc-label{white-space:normal}
+    .default-prices-card{flex-direction:column;align-items:stretch}
+    .cart-panel-header{padding:14px 16px}
+    .cart-list{padding:14px 16px}
+    .compare-col{width:200px}
+    table.bareme, table.surftbl{font-size:11px}
+  }
+
+  /* ── Vérification de fenêtre réglementaire ── */
+  .reg-check{border-radius:10px;padding:12px 15px;margin-bottom:16px;font-size:12px;line-height:1.5}
+  .reg-check-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .reg-check-row label{font-size:11.5px;font-weight:600;white-space:nowrap}
+  .reg-check-row input{padding:6px 9px;border:1.5px solid var(--border-dk);border-radius:7px;
+    font-size:12.5px;font-family:inherit;background:#FCFDFE}
+  .reg-status{font-weight:700;padding:2px 10px;border-radius:12px;font-size:11.5px}
+  .reg-ok{background:var(--green-bg);color:var(--green)}
+  .reg-warn{background:var(--orange-bg);color:var(--orange)}
+  .reg-source{font-size:10.5px;color:var(--text-3);margin-top:4px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="brand">
+      <div class="brand-mark">CEE</div>
+      <div class="brand-text">
+        <h1>Simulateur de primes CEE</h1>
+        <p>Catalogue complet des fiches &middot; EBS Énergie</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="stat-pill" id="ficheCount">11 fiches référencées</div>
+    </div>
+  </header>
+
+  <div class="sources-overlay" id="sourcesOverlay">
+    <div class="sources-panel">
+      <div class="sources-header">
+        <div>
+          <h3>Sources réglementaires</h3>
+          <p>Référence, version et fenêtres de validité vérifiées pour chaque fiche</p>
+        </div>
+        <button class="close-btn" onclick="closeSources()">✕</button>
+      </div>
+      <div class="sources-body" id="sourcesBody"></div>
+    </div>
+  </div>
+
+  <div class="default-prices-card">
+    <div class="dpc-label">💶 Prix CEE par défaut<span class="hint">Appliqués automatiquement à toutes les simulations</span></div>
+    <div class="dpc-fields">
+      <div class="dpc-field">
+        <label>Prix Classique <span class="hint">€/MWh</span></label>
+        <input type="number" id="defaultPriceClassique" step="0.1" placeholder="ex : 7,8">
+      </div>
+      <div class="dpc-field">
+        <label>Prix Précarité <span class="hint">€/MWh</span></label>
+        <input type="number" id="defaultPricePrecarite" step="0.1" placeholder="ex : 11">
+      </div>
+    </div>
+    <span class="dpc-saved" id="dpcSaved">✓ Enregistré</span>
+  </div>
+
+  <div class="search-wrap">
+    <svg class="search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+    <input type="text" class="search-input" id="searchInput" placeholder="Rechercher une fiche : PAC, isolation, solaire, rénovation, tertiaire..." autocomplete="off">
+  </div>
+
+  <div class="chips" id="chips">
+    <div class="chip active" data-filter="all">Toutes les fiches</div>
+    <div class="chip" data-filter="res">🏠 Résidentiel</div>
+    <div class="chip" data-filter="ter">🏢 Tertiaire</div>
+    <div class="chip empty-chip" data-filter="indus">🏭 Industrie</div>
+    <div class="chip empty-chip" data-filter="agri">🌾 Agriculture</div>
+    <div class="chip empty-chip" data-filter="reseaux">🔥 Réseaux</div>
+    <div class="chip empty-chip" data-filter="transport">🚚 Transport</div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+  <div id="groupedContainer"></div>
+  <div class="no-results" id="noResults" style="display:none">Aucune fiche ne correspond à cette recherche.</div>
+
+  <footer class="site-footer">
+    <p><b>Avertissement :</b> les simulations proposées par cet outil sont fournies à titre purement indicatif et n'ont aucune valeur contractuelle. Les prix CEE (classique, précarité) sont des paramètres modifiables par l'utilisateur et ne reflètent pas nécessairement les tarifs pratiqués à un instant donné par un obligé CEE. Les montants réels de prime dépendent notamment de l'éligibilité effective des travaux, du dossier constitué, du signataire retenu et de la réglementation en vigueur au moment de l'engagement des travaux. EBS Énergie ne saurait être tenue responsable des écarts entre les montants estimés par ce simulateur et les montants effectivement obtenus. Cet outil ne se substitue pas à une étude personnalisée du dossier.</p>
+    <button type="button" class="sources-link" onclick="openSources()">📚 Sources &amp; mises à jour</button>
+  </footer>
+</div>
+
+<!-- ═══════════ SIMULATOR OVERLAY ═══════════ -->
+<div class="sim-overlay" id="overlay">
+  <div class="sim-panel">
+    <div class="sim-header">
+      <div class="sim-header-l">
+        <h2 id="simTitle">—</h2>
+        <p id="simSubtitle">—</p>
+      </div>
+      <button class="close-btn" onclick="closeSim()">✕</button>
+    </div>
+    <div class="sim-body" id="simBody"></div>
+  </div>
+</div>
+
+<!-- ═══════════ CART FLOATING BAR ═══════════ -->
+<div class="cart-bar" id="cartBar" onclick="openCart()">
+  🧾 <span id="cartBarText">0 simulation</span>
+  <span class="cart-badge" id="cartBadge">0</span>
+</div>
+
+<!-- ═══════════ CART PANEL — tableau comparatif visuel ═══════════ -->
+<div class="cart-overlay" id="cartOverlay">
+  <div class="cart-panel">
+    <div class="cart-panel-header">
+      <div>
+        <h3>Dossier &amp; comparatif de simulations</h3>
+        <p>Estimations indicatives — non contractuelles</p>
+      </div>
+      <button class="close-btn" onclick="closeCart()">✕</button>
+    </div>
+    <div class="cart-list" id="cartList"></div>
+    <div class="cart-panel-footer">
+      <span class="legal-mini">Ces montants sont estimatifs et ne sauraient engager la responsabilité d'EBS Énergie.</span>
+      <button onclick="clearCart()">Vider</button>
+      <button class="btn-primary" onclick="downloadCartPDF()">📄 Télécharger le PDF</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ PRINT AREA (invisible à l'écran, utilisée pour l'export PDF) ═══════════ -->
+<div id="printArea"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// DONNÉES — CATALOGUE COMPLET DES FICHES CEE
+// ═══════════════════════════════════════════════════════════════════════
+const FICHES = [
+  {
+    code:"BAR-TH-171", title:"Pompe à chaleur Air/Eau individuelle", sector:"res", tags:["pac"],
+    version:"vA78.4", dv:"17 ans",
+    render: renderTH171
+  },
+  {
+    code:"BAR-TH-179", title:"Pompe à chaleur Air/Eau collective", sector:"res", tags:["pac"],
+    version:"vA75.1", dv:"22 ans",
+    render: renderTH179
+  },
+  {
+    code:"BAT-TH-163", title:"Pompe à chaleur Air/Eau tertiaire", sector:"ter", tags:["pac"],
+    version:"vA75.1", dv:"22 ans",
+    render: renderBAT163
+  },
+  {
+    code:"BAR-TH-177", title:"Rénovation globale résidentiel collectif", sector:"res", tags:["renov"],
+    version:"vA63-1", dv:"30 ans",
+    render: renderTH177
+  },
+  {
+    code:"BAR-TH-168", title:"Dispositif solaire thermique", sector:"res", tags:["solaire"],
+    version:"vA87.4", dv:"25 ans",
+    render: renderTH168
+  },
+  {
+    code:"BAR-EN-101", title:"Isolation combles perdus / rampants", sector:"res", tags:["isol"],
+    version:"vA64-6", dv:"30 ans",
+    render: r=>renderEN(r,{H1:1700,H2:1400,H3:920},true,"BAR-EN-101")
+  },
+  {
+    code:"BAR-EN-102", title:"Isolation des murs", sector:"res", tags:["isol"],
+    version:"vA65-4", dv:"30 ans",
+    render: r=>renderEN(r,{H1:1600,H2:1300,H3:880},true,"BAR-EN-102")
+  },
+  {
+    code:"BAR-EN-103", title:"Isolation du plancher bas", sector:"res", tags:["isol"],
+    version:"vA64-6", dv:"30 ans",
+    render: r=>renderEN(r,{H1:1100,H2:890,H3:590},true,"BAR-EN-103")
+  },
+  {
+    code:"BAT-EN-101", title:"Isolation combles / toitures tertiaire", sector:"ter", tags:["isol"],
+    version:"vA64-4", dv:"30 ans",
+    render: r=>renderENBat(r,{H1:2600,H2:2100,H3:1400},"BAT-EN-101")
+  },
+  {
+    code:"BAT-EN-102", title:"Isolation des murs tertiaire", sector:"ter", tags:["isol"],
+    version:"vA64-3", dv:"30 ans",
+    render: renderEN102Bat
+  },
+  {
+    code:"BAT-EN-103", title:"Isolation du plancher bas tertiaire", sector:"ter", tags:["isol"],
+    version:"vA64-4", dv:"30 ans",
+    render: r=>renderENBat(r,{H1:5200,H2:4200,H3:2800},"BAT-EN-103")
+  },
+];
+
+const eur = n => n.toLocaleString('fr-FR',{maximumFractionDigits:0}) + " €";
+const eur2 = n => n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + " €";
+const kwh = n => n.toLocaleString('fr-FR',{maximumFractionDigits:0}) + " kWhc";
+const num = n => n.toLocaleString('fr-FR',{maximumFractionDigits:0});
+
+// ═══════════════════════════════════════════════════════════════════════
+// GENERIC BARÈME TABLE TOGGLE — bouton "Voir le barème complet"
+// ═══════════════════════════════════════════════════════════════════════
+function bareme(container, buildFn){
+  container.insertAdjacentHTML('beforeend', `
+    <button type="button" class="bareme-toggle" id="baremeToggleBtn">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+      <span id="baremeToggleLabel">Voir le barème complet</span>
+    </button>
+    <div class="bareme-wrap" id="baremeWrap"></div>
+  `);
+  const btn = container.querySelector('#baremeToggleBtn');
+  const wrap = container.querySelector('#baremeWrap');
+  const label = container.querySelector('#baremeToggleLabel');
+  btn.addEventListener('click', ()=>{
+    const isOpen = wrap.classList.toggle('open');
+    btn.classList.toggle('expanded', isOpen);
+    label.textContent = isOpen ? 'Masquer le barème complet' : 'Voir le barème complet';
+    if(isOpen) buildFn(wrap);
+  });
+  wrap.refresh = () => { if(wrap.classList.contains('open')) buildFn(wrap); };
+  wrap.forceBuild = () => buildFn(wrap);
+  return wrap;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GENERIC "COMPARER AVEC UN ÉCART" — table ajustable pilotée par l'utilisateur
+// opts: { unitLabel, paramLabel, defaultStep, defaultRep, getBase, minValid, calc }
+//   getBase() -> valeur actuelle du paramètre (lu dans le formulaire)
+//   calc(val) -> { kwh, prime }  pour cette valeur du paramètre
+//   minValid  -> valeur plancher (optionnelle) sous laquelle une ligne est masquée
+// ═══════════════════════════════════════════════════════════════════════
+function adjustableTable(container, opts){
+  container.insertAdjacentHTML('beforeend', `
+    <div class="adj-block">
+      <div class="adj-title">📊 Comparer avec un écart</div>
+      <div class="adj-fields">
+        <div class="adj-field">
+          <label>Écart <span class="hint">${opts.unitLabel}</span></label>
+          <input type="number" id="adjStep" value="${opts.defaultStep}" min="0.1" step="0.1">
+        </div>
+        <div class="adj-field">
+          <label>Répétition <span class="hint">lignes ajoutées, pair, max 6</span></label>
+          <input type="number" id="adjRep" value="${opts.defaultRep||2}" min="2" max="6" step="2">
+        </div>
+      </div>
+      <div id="adjTableWrap"></div>
+    </div>
+  `);
+  const stepEl = container.querySelector('#adjStep');
+  const repEl  = container.querySelector('#adjRep');
+  const wrap   = container.querySelector('#adjTableWrap');
+
+  function render(){
+    let step = parseFloat(stepEl.value)||0;
+    let rep  = parseInt(repEl.value)||2;
+    rep = Math.max(2, Math.min(6, Math.round(rep/2)*2));
+    if(String(rep) !== repEl.value) repEl.value = rep;
+    const base = opts.getBase();
+    const half = rep/2;
+    let rows = '';
+    const hasExtra = !!opts.extraLabel;
+    for(let i=-half; i<=half; i++){
+      const val = base + i*step;
+      if(opts.minValid !== undefined && val < opts.minValid) continue;
+      const r = opts.calc(val);
+      const isCur = i===0;
+      const valLabel = Number.isInteger(val) ? val : val.toFixed(1);
+      rows += `<tr class="${isCur?'hl':''}"><td>${valLabel} ${opts.unitLabel}${isCur?' (actuel)':''}</td><td>${kwh(r.kwh)}</td><td class="prime-val">${eur(r.prime)}</td>${hasExtra?`<td class="prime-val" style="color:var(--blue)">${eur(r.extra)}</td>`:''}</tr>`;
+    }
+    wrap.innerHTML = `<table class="surftbl"><thead><tr><th>${opts.paramLabel}</th><th>kWh cumac</th><th>${opts.primeLabel||'Prime'}</th>${hasExtra?`<th>${opts.extraLabel}</th>`:''}</tr></thead><tbody>${rows}</tbody></table>`;
+  }
+  stepEl.addEventListener('input', render);
+  repEl.addEventListener('input', render);
+  render();
+  return {refresh: render};
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SIMULATEUR INVERSÉ — recherche par bissection (robuste, générique)
+// opts: { quantityLabel, unitLabel, integer, min, max, hasPrec, calc(q) => {prime}|{primeC,primeP} }
+// ═══════════════════════════════════════════════════════════════════════
+function reverseSolver(container, opts){
+  container.insertAdjacentHTML('beforeend', `
+    <div class="adj-block">
+      <div class="adj-title">🎯 Simulateur inversé — quelle ${opts.quantityLabel} pour atteindre une prime cible ?</div>
+      <div class="adj-fields">
+        <div class="adj-field">
+          <label>Prime visée <span class="hint">€</span></label>
+          <input type="number" id="revTarget" placeholder="ex : 5000">
+        </div>
+        ${opts.hasPrec ? `<div class="adj-field">
+          <label>Type de prime</label>
+          <select id="revType"><option value="classique">Classique</option><option value="precarite">Précarité</option></select>
+        </div>` : ''}
+      </div>
+      <div id="revResult"></div>
+    </div>
+  `);
+  const targetEl = container.querySelector('#revTarget');
+  const typeEl = container.querySelector('#revType');
+  const resultEl = container.querySelector('#revResult');
+
+  function fnAt(q){
+    const r = opts.calc(q);
+    const usePrec = typeEl && typeEl.value === 'precarite';
+    return usePrec ? (r.primeP ?? r.prime ?? 0) : (r.primeC ?? r.prime ?? 0);
+  }
+
+  function render(){
+    const target = parseFloat(targetEl.value)||0;
+    if(target<=0){ resultEl.innerHTML=''; return; }
+    const min = opts.min||0;
+    const max = opts.max||1000000;
+    if(fnAt(max) < target){
+      resultEl.innerHTML = `<div class="warn-box show">⚠ Prime cible non atteignable, même à ${max.toLocaleString('fr-FR')} ${opts.unitLabel}. Vérifiez la zone, l'Etas ou le prix saisis.</div>`;
+      return;
+    }
+    if(fnAt(min) >= target){
+      resultEl.innerHTML = `
+        <div class="result-row hi"><span class="result-label">${opts.quantityLabel} nécessaire</span><span class="result-val">${min} ${opts.unitLabel} (minimum)</span></div>
+        <div style="font-size:10.5px;color:var(--text-3);margin-top:6px">La prime cible est déjà atteinte à la valeur minimale testée.</div>`;
+      return;
+    }
+    let lo=min, hi=max;
+    for(let i=0;i<60;i++){
+      const mid=(lo+hi)/2;
+      if(fnAt(mid) < target) lo=mid; else hi=mid;
+    }
+    const q = opts.integer ? Math.ceil(hi) : Math.round(hi*10)/10;
+    const achieved = fnAt(q);
+    resultEl.innerHTML = `
+      <div class="result-row hi"><span class="result-label">${opts.quantityLabel} nécessaire</span><span class="result-val">${q} ${opts.unitLabel}</span></div>
+      <div style="font-size:10.5px;color:var(--text-3);margin-top:6px">Avec cette valeur, la prime obtenue serait de ${eur(achieved)} (≥ ${eur(target)} visé).</div>
+    `;
+  }
+  targetEl.addEventListener('input', render);
+  if(typeEl) typeEl.addEventListener('input', render);
+  return {refresh: render};
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GRID RENDERING
+// ═══════════════════════════════════════════════════════════════════════
+const grid = document.getElementById('grid');
+const searchInput = document.getElementById('searchInput');
+const chips = document.querySelectorAll('.chip');
+let activeFilter = 'all';
+
+function tagLabel(t){
+  return {pac:"PAC",isol:"Isolation",solaire:"Solaire",renov:"Rénovation"}[t] || t;
+}
+function sectionLabel(t){
+  return {pac:"Pompes à chaleur",isol:"Isolation",solaire:"Solaire thermique",renov:"Rénovation globale"}[t] || t;
+}
+
+function buildCard(f){
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.onclick = () => openSim(f);
+  div.innerHTML = `
+    <div class="card-top">
+      <span class="card-code">${f.code}</span>
+      <span class="sector-tag ${f.sector==='res'?'sector-res':'sector-ter'}">${f.sector==='res'?'Résidentiel':'Tertiaire'}</span>
+    </div>
+    <div class="card-title">${f.title}</div>
+    <div class="card-meta">
+      <span class="meta-tag">${f.version}</span>
+      <span class="meta-tag">DV ${f.dv}</span>
+      ${f.tags.map(t=>`<span class="meta-tag">${tagLabel(t)}</span>`).join('')}
+    </div>
+  `;
+  return div;
+}
+
+const SUBDOMAIN_ORDER = ['pac','isol','solaire','renov'];
+const groupedContainer = document.getElementById('groupedContainer');
+
+function renderFlatGrid(list){
+  grid.style.display = '';
+  groupedContainer.style.display = 'none';
+  grid.innerHTML = '';
+  document.getElementById('noResults').style.display = list.length ? 'none' : 'block';
+  list.forEach(f => grid.appendChild(buildCard(f)));
+  document.getElementById('ficheCount').textContent = `${list.length} / ${FICHES.length} fiches`;
+}
+
+function renderGroupedBySector(sector){
+  grid.style.display = 'none';
+  groupedContainer.style.display = '';
+  document.getElementById('noResults').style.display = 'none';
+  groupedContainer.innerHTML = '';
+  const sectorFiches = FICHES.filter(f => f.sector === sector);
+
+  if(sectorFiches.length === 0){
+    groupedContainer.innerHTML = `<div class="empty-sector">Aucune fiche n'est encore référencée pour ce secteur.<br>Cette catégorie sera complétée prochainement.</div>`;
+    document.getElementById('ficheCount').textContent = `0 fiche`;
+    return;
+  }
+
+  let shown = 0;
+  SUBDOMAIN_ORDER.forEach(tag=>{
+    const group = sectorFiches.filter(f => f.tags.includes(tag));
+    if(group.length === 0) return;
+    shown += group.length;
+    const section = document.createElement('div');
+    section.className = 'subdomain-section';
+    section.innerHTML = `<div class="subdomain-title">${sectionLabel(tag)} <span class="subdomain-count">${group.length}</span></div>`;
+    const subgrid = document.createElement('div');
+    subgrid.className = 'grid';
+    group.forEach(f => subgrid.appendChild(buildCard(f)));
+    section.appendChild(subgrid);
+    groupedContainer.appendChild(section);
+  });
+  document.getElementById('ficheCount').textContent = `${shown} fiche${shown>1?'s':''}`;
+}
+
+function renderGrid(){
+  const q = searchInput.value.trim().toLowerCase();
+
+  if(q){
+    const filtered = FICHES.filter(f=>{
+      const matchesSector = activeFilter === 'all' || f.sector === activeFilter;
+      const matchesSearch = f.code.toLowerCase().includes(q) ||
+        f.title.toLowerCase().includes(q) ||
+        f.tags.some(t=>tagLabel(t).toLowerCase().includes(q));
+      return matchesSector && matchesSearch;
+    });
+    renderFlatGrid(filtered);
+    return;
+  }
+
+  if(activeFilter === 'all'){
+    renderFlatGrid(FICHES);
+    return;
+  }
+
+  renderGroupedBySector(activeFilter);
+}
+
+searchInput.addEventListener('input', renderGrid);
+chips.forEach(c => c.addEventListener('click', () => {
+  chips.forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');
+  activeFilter = c.dataset.filter;
+  renderGrid();
+}));
+
+renderGrid();
+
+// ═══════════════════════════════════════════════════════════════════════
+// PRIX PAR DÉFAUT — appliqués automatiquement à toutes les simulations
+// ═══════════════════════════════════════════════════════════════════════
+function loadDefaultPrices(){
+  try{
+    return JSON.parse(localStorage.getItem('cee_default_prices') || '{"classique":"","precarite":""}');
+  }catch(e){ return {classique:"",precarite:""}; }
+}
+function saveDefaultPrices(){
+  try{
+    localStorage.setItem('cee_default_prices', JSON.stringify({
+      classique: document.getElementById('defaultPriceClassique').value,
+      precarite: document.getElementById('defaultPricePrecarite').value,
+    }));
+    const saved = document.getElementById('dpcSaved');
+    saved.classList.add('show');
+    clearTimeout(saveDefaultPrices._t);
+    saveDefaultPrices._t = setTimeout(()=>saved.classList.remove('show'), 1200);
+  }catch(e){ /* stockage indisponible */ }
+}
+function applyDefaultPrices(container){
+  const defaults = loadDefaultPrices();
+  const pcEl = container.querySelector('#f-pc');
+  const ppEl = container.querySelector('#f-pp');
+  if(pcEl && defaults.classique){ pcEl.value = defaults.classique; }
+  if(ppEl && defaults.precarite){ ppEl.value = defaults.precarite; }
+  if(pcEl) pcEl.dispatchEvent(new Event('input', {bubbles:true}));
+  else if(ppEl) ppEl.dispatchEvent(new Event('input', {bubbles:true}));
+}
+(function initDefaultPricesUI(){
+  const stored = loadDefaultPrices();
+  document.getElementById('defaultPriceClassique').value = stored.classique || '';
+  document.getElementById('defaultPricePrecarite').value = stored.precarite || '';
+  document.getElementById('defaultPriceClassique').addEventListener('input', saveDefaultPrices);
+  document.getElementById('defaultPricePrecarite').addEventListener('input', saveDefaultPrices);
+})();
+
+// ═══════════════════════════════════════════════════════════════════════
+// SIMULATOR OVERLAY LOGIC
+// ═══════════════════════════════════════════════════════════════════════
+const overlay = document.getElementById('overlay');
+const simTitle = document.getElementById('simTitle');
+const simSubtitle = document.getElementById('simSubtitle');
+const simBody = document.getElementById('simBody');
+
+function openSim(f){
+  currentFiche = f;
+  simTitle.textContent = f.code + " — " + f.title;
+  simSubtitle.textContent = `${f.version} · Durée de vie ${f.dv}`;
+  simBody.innerHTML = '';
+  document.querySelector('.sim-panel').classList.toggle('wide', f.code !== 'BAR-TH-177');
+  f.render(simBody);
+  addTooltips(simBody);
+  applyDefaultPrices(simBody);
+  addRegulatoryCheck(simBody, f.code);
+
+  // Capture des valeurs par défaut pour le bouton Réinitialiser
+  const defaults = [];
+  simBody.querySelectorAll('input,select').forEach(el=>{
+    defaults.push({id: el.id, value: el.value});
+  });
+
+  simBody.insertAdjacentHTML('beforeend', `
+    <div class="legal-note">⚖️ <b>Estimation indicative et non contractuelle.</b> Les montants affichés dépendent des prix CEE saisis par l'utilisateur et de l'éligibilité réelle des travaux, vérifiée sur site. Cet outil ne constitue pas un engagement d'EBS Énergie et ne saurait engager sa responsabilité en cas d'écart avec le montant de prime effectivement obtenu.</div>
+    <div class="sim-actions">
+      <button type="button" class="btn-reset" id="resetSimBtn" title="Remettre les valeurs par défaut">↺ Réinitialiser</button>
+      <button type="button" class="btn-secondary" id="addToCartBtn">+ Ajouter au comparatif</button>
+      <div class="pdf-dropdown">
+        <button type="button" class="btn-secondary" id="pdfMainBtn">📄 Télécharger PDF ▾</button>
+        <div class="pdf-menu" id="pdfMenu"></div>
+      </div>
+    </div>
+  `);
+  document.getElementById('resetSimBtn').addEventListener('click', ()=>{
+    defaults.forEach(d=>{
+      const el = document.getElementById(d.id);
+      if(!el) return;
+      el.value = d.value;
+      el.dispatchEvent(new Event('input', {bubbles:true}));
+    });
+  });
+  const addBtn = document.getElementById('addToCartBtn');
+  addBtn.addEventListener('click', ()=>{
+    cart.push(captureSnapshot());
+    saveCart();
+    updateCartUI();
+    addBtn.textContent = '✓ Ajouté au comparatif';
+    addBtn.classList.add('added');
+    setTimeout(()=>{ addBtn.textContent='+ Ajouter au comparatif'; addBtn.classList.remove('added'); }, 1500);
+  });
+
+  // Menu déroulant "Télécharger PDF" — options selon ce que la fiche propose
+  const hasBareme = !!simBody.querySelector('#baremeWrap');
+  const hasAdj = !!simBody.querySelector('#adjTableWrap');
+  const pdfMenu = document.getElementById('pdfMenu');
+  let menuHtml = `<button type="button" data-opt="sim">Simulation uniquement</button>`;
+  if(hasBareme) menuHtml += `<button type="button" data-opt="bareme">+ Barème complet</button>`;
+  if(hasAdj) menuHtml += `<button type="button" data-opt="adj">+ Tableau évolutif</button>`;
+  if(hasBareme && hasAdj) menuHtml += `<button type="button" class="pdf-opt-all" data-opt="all">Tout inclure (simulation complète)</button>`;
+  pdfMenu.innerHTML = menuHtml;
+
+  const pdfMainBtn = document.getElementById('pdfMainBtn');
+  pdfMainBtn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    pdfMenu.classList.toggle('open');
+  });
+  pdfMenu.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      pdfMenu.classList.remove('open');
+      downloadSimPDF(b.dataset.opt);
+    });
+  });
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('.pdf-dropdown')) pdfMenu.classList.remove('open');
+  });
+
+  overlay.classList.add('open');
+}
+function closeSim(){ overlay.classList.remove('open'); }
+document.addEventListener('keydown', e => { if(e.key === 'Escape'){ closeSim(); closeCart(); closeSources(); } });
+
+// ═══════════════════════════════════════════════════════════════════════
+// GLOSSAIRE — info-bulles pédagogiques sur les champs techniques
+// ═══════════════════════════════════════════════════════════════════════
+const GLOSSARY = [
+  ["profil du ménage", "Catégorie de revenus du bénéficiaire (très modeste, modeste, ou autre) : elle détermine le coefficient de bonification et le tarif CEE applicable."],
+  ["ménages précaires", "Nombre de logements occupés par des ménages aux ressources modestes ou très modestes, éligibles au tarif Précarité."],
+  ["prix précarité", "Tarif CEE plus élevé, réservé aux ménages aux revenus modestes ou très modestes selon les plafonds ANAH."],
+  ["prix classique", "Tarif CEE standard, applicable aux ménages ne relevant pas de la précarité énergétique."],
+  ["coup de pouce", "Dispositif qui multiplie la prime CEE lorsque les travaux remplacent un chauffage fossile (charbon, fioul, gaz) par un équipement performant."],
+  ["etas", "Efficacité énergétique saisonnière de la pompe à chaleur (règlement UE 813/2013). Plus elle est élevée, plus le forfait CEE est important."],
+  ["secteur d'activité", "Coefficient qui ajuste le forfait CEE selon l'usage du bâtiment tertiaire (bureaux, santé, commerces...), car leurs besoins de chauffage diffèrent."],
+  ["zone climatique", "Zone ADEME définie selon la rigueur du climat (H1 = le plus froid, H3 = le plus doux). Elle détermine le forfait de kWh cumac applicable."],
+  ["cep initial", "Consommation conventionnelle en énergie primaire du bâtiment avant travaux, exprimée en kWh par m² et par an."],
+  ["cep projet", "Consommation conventionnelle en énergie primaire du bâtiment après travaux, exprimée en kWh par m² et par an."],
+  ["puissance pac", "Somme des puissances nominales des pompes à chaleur installées, utilisée pour calculer le facteur R."],
+  ["puissance chaufferie", "Puissance totale utile de la chaufferie après travaux, hors équipements de secours."],
+  ["énergie de chauffage", "Type d'énergie utilisée par le système de chauffage (électricité ou combustible), qui détermine le forfait applicable."],
+  ["type de logement", "Maison individuelle ou appartement : la surface de référence et le forfait CEE diffèrent selon le type de logement."],
+  ["usage", "Indique si l'équipement couvre uniquement le chauffage, ou le chauffage et l'eau chaude sanitaire (ECS) — les forfaits diffèrent selon l'usage."],
+];
+function addTooltips(container){
+  container.querySelectorAll('.field label').forEach(label=>{
+    const text = label.textContent.toLowerCase();
+    const match = GLOSSARY.find(([key]) => text.includes(key));
+    if(match && !label.querySelector('.info-icon')){
+      label.insertAdjacentHTML('beforeend', `<span class="info-icon">i<span class="tip">${match[1]}</span></span>`);
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// VÉRIFICATION DE FENÊTRE RÉGLEMENTAIRE — fenêtres vérifiées sur documents officiels
+// (voir onglet Sources pour le détail et les dates de dernière vérification)
+// ═══════════════════════════════════════════════════════════════════════
+const REGULATORY_WINDOWS = {
+  'BAR-TH-168': {
+    type: 'bonification',
+    label: 'Bonification ×4 / ×5',
+    start: '2026-09-01', end: '2026-12-31',
+    source: 'Arrêté du 17/08/2026 — JORF du 23/08/2026'
+  },
+  'BAR-TH-171': {
+    type: 'bonification',
+    label: 'Coup de Pouce ×5',
+    start: '2025-10-01', end: '2030-12-31',
+    source: 'Charte Coup de Pouce Chauffage'
+  },
+  'BAR-TH-177': {
+    type: 'bonification',
+    label: 'Coup de Pouce (prolongé)',
+    start: '2026-01-17', end: null,
+    source: "Arrêté du 07/01/2026 — pas de date de fin connue à ce jour, à reconfirmer"
+  },
+  'BAR-TH-179': {
+    type: 'validite',
+    label: 'Validité de la fiche',
+    start: null, end: '2030-12-31',
+    source: 'BAR-TH-179 vA75.1'
+  },
+  'BAT-TH-163': {
+    type: 'validite',
+    label: 'Validité de la fiche',
+    start: null, end: '2030-12-31',
+    source: 'BAT-TH-163 vA81-2'
+  },
+};
+
+function addRegulatoryCheck(container, ficheCode){
+  const win = REGULATORY_WINDOWS[ficheCode];
+  if(!win) return;
+  const today = new Date().toISOString().slice(0,10);
+  container.insertAdjacentHTML('afterbegin', `
+    <div class="reg-check" id="regCheckBox">
+      <div class="reg-check-row">
+        <label for="regDate">📅 Date d'engagement prévue</label>
+        <input type="date" id="regDate" value="${today}">
+        <span class="reg-status" id="regStatus"></span>
+      </div>
+      <div class="reg-source">${win.label} — Source : ${win.source}</div>
+    </div>
+  `);
+  const dateEl = container.querySelector('#regDate');
+  const statusEl = container.querySelector('#regStatus');
+  const boxEl = container.querySelector('#regCheckBox');
+  function evaluate(){
+    const d = dateEl.value;
+    const beforeStart = win.start && d < win.start;
+    const afterEnd = win.end && d > win.end;
+    const ok = !beforeStart && !afterEnd;
+    if(ok){
+      statusEl.textContent = '✓ Dans la fenêtre valide';
+      statusEl.className = 'reg-status reg-ok';
+      boxEl.style.background = 'var(--green-bg)';
+    } else {
+      statusEl.textContent = afterEnd ? '⚠ Fenêtre dépassée à cette date' : '⚠ Pas encore active à cette date';
+      statusEl.className = 'reg-status reg-warn';
+      boxEl.style.background = 'var(--orange-bg)';
+    }
+  }
+  dateEl.addEventListener('input', evaluate);
+  evaluate();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CAHIER DES CHARGES — BAR-TH-168 (pièces à fournir)
+// ═══════════════════════════════════════════════════════════════════════
+function addChecklist168(container){
+  container.insertAdjacentHTML('beforeend', `
+    <div class="bareme-actions-row">
+      <button type="button" class="bareme-toggle" id="checklistToggleBtn">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        <span id="checklistToggleLabel">📋 Pièces à fournir pour ce dossier</span>
+      </button>
+      <button type="button" class="btn-pdf-sm" id="checklistDownloadBtn" title="Télécharger le cahier des charges en PDF">📄 PDF</button>
+    </div>
+    <div class="bareme-wrap" id="checklistWrap"></div>
+  `);
+  const btn = container.querySelector('#checklistToggleBtn');
+  const wrap = container.querySelector('#checklistWrap');
+  const label = container.querySelector('#checklistToggleLabel');
+  const dlBtn = container.querySelector('#checklistDownloadBtn');
+
+  function buildContent(){
+    return `
+      <div class="checklist-section" style="padding:14px 16px">
+        <div class="checklist-cat">✅ Conditions d'éligibilité</div>
+        <div class="checklist-item">☐ Logement achevé depuis plus de 2 ans</div>
+        <div class="checklist-item">☐ Bénéficiaire : personne physique ou personne morale (SCI, SAS…)</div>
+        <div class="checklist-item">☐ Personne morale, logement loué : transmission du cadre R2</div>
+        <div class="checklist-item">☐ Non cumulable avec BAR-TH-171 et BAR-TH-172</div>
+        <div class="checklist-item">☐ Aucun équipement gaz/fioul/charbon conservé après travaux (bonification)</div>
+
+        <div class="checklist-cat">👤 Documents du bénéficiaire</div>
+        <div class="checklist-item">☐ Avis d'imposition N-1 ou N-2</div>
+        <div class="checklist-item">☐ Si adresse différente : justificatif de changement d'adresse (impots.gouv.fr) + un justificatif à l'adresse des travaux (facture énergie/eau, internet fixe, assurance habitation, taxe foncière/habitation, ou acte notarié)</div>
+        <div class="checklist-refused">✕ Non acceptés : facture mobile, quittance de loyer, contrat de bail</div>
+
+        <div class="checklist-cat">✍️ Documents CEE</div>
+        <div class="checklist-item">☐ Devis daté et signé</div>
+        <div class="checklist-item">☐ Cadre de contribution transmis au bénéficiaire</div>
+        <div class="checklist-item">☐ Étude de dimensionnement (capteurs, ballon, émetteurs)</div>
+        <div class="checklist-item">☐ Déclaration préalable de travaux — Cerfa n° 13703*12</div>
+        <div class="checklist-item">☐ Décision de non-opposition de la mairie</div>
+        <div class="checklist-item">☐ Attestation sur l'honneur signée (bénéficiaire + installateur)</div>
+        <div class="checklist-item">☐ Facture définitive</div>
+        <div class="checklist-item">☐ Attestation de remplacement des émetteurs en basse température</div>
+
+        <div class="checklist-cat">👷 Documents de l'installateur</div>
+        <div class="checklist-item">☐ Qualification RGE valide (devis + achèvement) : Qualisol Combi (chauffage+ECS) / Qualisol CESI (ECS seule) / Qualibat 5241</div>
+        <div class="checklist-item">☐ Attestation d'assurance décennale (solaire thermique, hydraulique, toiture)</div>
+
+        <div class="checklist-cat">☀️ Documents du dispositif solaire</div>
+        <div class="checklist-item">☐ Type d'appoint, marque, référence, puissance thermique nominale, Etas</div>
+        <div class="checklist-item">☐ Attestation de compatibilité des émetteurs basse température</div>
+
+        <div class="checklist-cat">📸 Photographies obligatoires (datées, géolocalisées, nettes)</div>
+        <div class="checklist-item">☐ Avant / pendant / après travaux — Vue générale de la maison</div>
+        <div class="checklist-item">☐ Capteurs en toiture — Ballon solaire + plaque signalétique</div>
+        <div class="checklist-item">☐ Régulateur, groupe de sécurité, vase d'expansion — Raccordements hydrauliques</div>
+        <div class="checklist-item">☐ Appoint ENR + plaque signalétique — Reconfiguration basse température</div>
+        <div class="checklist-item">☐ Émetteurs basse température — Équipement fossile avant/après dépose (le cas échéant)</div>
+
+        <div style="font-size:10px;color:var(--text-3);margin-top:12px;padding-top:8px;border-top:1px solid var(--border)">
+          Document interne EBS Énergie — ne se substitue pas à la fiche d'opération standardisée officielle.
+        </div>
+      </div>
+    `;
+  }
+
+  btn.addEventListener('click', ()=>{
+    const isOpen = wrap.classList.toggle('open');
+    btn.classList.toggle('expanded', isOpen);
+    label.textContent = isOpen ? 'Masquer les pièces à fournir' : '📋 Pièces à fournir pour ce dossier';
+    if(isOpen) wrap.innerHTML = buildContent();
+  });
+  dlBtn.addEventListener('click', ()=>{
+    const area = document.getElementById('printArea');
+    area.innerHTML = `
+      <div class="print-doc-header">
+        <h1>Cahier des charges — BAR-TH-168</h1>
+        <p>Pièces justificatives à transmettre à EBS Énergie — généré le ${new Date().toLocaleString('fr-FR')}</p>
+      </div>
+      ${buildContent()}
+    `;
+    window.print();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// SOURCES & MISES À JOUR — modale discrète, distincte du simulateur
+// ═══════════════════════════════════════════════════════════════════════
+const FICHE_SOURCES = [
+  { code:'BAR-TH-171', version:'vA78.4', detail:'Coup de Pouce ×5 : du 01/10/2025 au 31/12/2030. Aucune date d\'abrogation générale connue à ce jour.' },
+  { code:'BAR-TH-179', version:'vA75.1', detail:'Fiche applicable aux opérations engagées jusqu\'au 31/12/2030 (texte réglementaire officiel).' },
+  { code:'BAT-TH-163', version:'vA81-2', detail:'Fiche applicable aux opérations engagées jusqu\'au 31/12/2030 (texte réglementaire officiel, vérifié le 08/09/2026).' },
+  { code:'BAR-TH-177', version:'vA63-1', detail:'Coup de Pouce prolongé par arrêté du 07/01/2026 (engagement ≥ 17/01/2026). Aucune date de fin communiquée à ce jour — à reconfirmer périodiquement.' },
+  { code:'BAR-TH-168', version:'vA87.4', detail:'Bonification ×4/×5 du 01/09/2026 au 31/12/2026 (arrêté du 17/08/2026, JORF du 23/08/2026). ⚠ Une note interne datée a référencé la fiche en version A65.2 — vérifier la version en vigueur avant tout engagement après fin 2026.' },
+  { code:'BAR-EN-101', version:'vA64-6', detail:'Fiche abrogée à compter du 01/05/2027 (texte réglementaire officiel).' },
+  { code:'BAR-EN-102', version:'vA65-4', detail:'Fiche abrogée à compter du 01/05/2027 (texte réglementaire officiel).' },
+  { code:'BAR-EN-103', version:'vA64-6', detail:'Fiche abrogée à compter du 01/05/2027 (texte réglementaire officiel).' },
+  { code:'BAT-EN-101', version:'vA64-4', detail:'Date d\'abrogation non communiquée dans le texte transmis — à vérifier.' },
+  { code:'BAT-EN-102', version:'vA64-3', detail:'Date d\'abrogation non communiquée dans le texte transmis — à vérifier.' },
+  { code:'BAT-EN-103', version:'vA64-4', detail:'Date d\'abrogation non communiquée dans le texte transmis — à vérifier.' },
+];
+
+function openSources(){
+  const body = document.getElementById('sourcesBody');
+  body.innerHTML = FICHE_SOURCES.map(s => `
+    <div class="source-card">
+      <span class="sc-code">${s.code}</span><span class="sc-version">${s.version}</span>
+      <div class="sc-detail">${s.detail}</div>
+    </div>
+  `).join('') + `
+    <div class="sources-disclaimer">
+      <b>⚖️ Portée de cette veille :</b> les dates ci-dessus proviennent des textes réglementaires transmis à EBS Énergie et vérifiés à la construction de cet outil. Ce simulateur ne surveille pas automatiquement le Journal Officiel : en cas de nouvel arrêté modifiant une fiche ou une bonification, cette page doit être mise à jour manuellement. À reconfirmer périodiquement, notamment pour les fenêtres de bonification proches de leur échéance.
+    </div>
+  `;
+  document.getElementById('sourcesOverlay').classList.add('open');
+}
+function closeSources(){ document.getElementById('sourcesOverlay').classList.remove('open'); }
+
+// ═══════════════════════════════════════════════════════════════════════
+// COMPARATIF (PANIER) — capture générique + export PDF via impression
+// ═══════════════════════════════════════════════════════════════════════
+let currentFiche = null;
+let cart = loadCart();
+
+function loadCart(){
+  try{
+    return JSON.parse(localStorage.getItem('cee_cart') || '[]');
+  }catch(e){ return []; }
+}
+function saveCart(){
+  try{
+    localStorage.setItem('cee_cart', JSON.stringify(cart));
+  }catch(e){ /* stockage indisponible — le panier reste en mémoire pour la session */ }
+}
+
+function captureSnapshot(){
+  const params = [];
+  document.querySelectorAll('#simBody .field').forEach(f=>{
+    const label = f.querySelector('label');
+    const input = f.querySelector('input,select');
+    if(!label || !input) return;
+    const labelText = (label.childNodes[0].textContent || '').trim();
+    const value = input.tagName === 'SELECT' ? input.options[input.selectedIndex].text : input.value;
+    if(labelText) params.push([labelText, value]);
+  });
+  const results = [];
+  document.querySelectorAll('#simBody .result-row').forEach(r=>{
+    const label = r.querySelector('.result-label');
+    const val = r.querySelector('.result-val');
+    const isHi = r.classList.contains('hi') || r.classList.contains('cdp');
+    if(label && val) results.push([label.textContent.trim(), val.textContent.trim(), isHi]);
+  });
+  return {
+    id: 'snap_' + Date.now() + '_' + Math.random().toString(36).slice(2,8),
+    code: currentFiche.code,
+    title: currentFiche.title,
+    date: new Date().toLocaleString('fr-FR'),
+    params, results
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MODE DOSSIER — cumul de plusieurs fiches, vérification de non-cumul,
+// total sélectionnable (session uniquement, non persisté)
+// ═══════════════════════════════════════════════════════════════════════
+const NON_CUMUL = {
+  'BAR-TH-168': ['BAR-TH-171'],
+  'BAR-TH-171': ['BAR-TH-168'],
+  'BAR-TH-177': ['BAR-TH-171','BAR-TH-179','BAT-TH-163','BAR-TH-168','BAR-EN-101','BAR-EN-102','BAR-EN-103'],
+};
+let dossierSelections = {}; // session uniquement — id snapshot -> index de la ligne comptée dans le total
+
+function parseEuroVal(str){
+  const n = parseInt(String(str).replace(/[^\d-]/g,''), 10);
+  return isNaN(n) ? 0 : n;
+}
+
+function checkNonCumul(items){
+  const conflicts = [];
+  for(let i=0;i<items.length;i++){
+    for(let j=i+1;j<items.length;j++){
+      const a = items[i].code, b = items[j].code;
+      if((NON_CUMUL[a]||[]).includes(b)){
+        conflicts.push([a,b]);
+      }
+    }
+  }
+  return conflicts;
+}
+
+function updateCartUI(){
+  const bar = document.getElementById('cartBar');
+  const badge = document.getElementById('cartBadge');
+  const text = document.getElementById('cartBarText');
+  bar.classList.toggle('show', cart.length > 0);
+  badge.textContent = cart.length;
+  text.textContent = cart.length + (cart.length>1 ? ' simulations' : ' simulation');
+  renderCompareTable();
+}
+function renderCompareTable(){
+  const list = document.getElementById('cartList');
+  if(cart.length === 0){
+    list.innerHTML = `<div class="cart-empty">Aucune simulation enregistrée pour le moment.<br>Ouvrez une fiche et cliquez sur « + Ajouter au comparatif » pour la placer ici.</div>`;
+    return;
+  }
+
+  const conflicts = checkNonCumul(cart);
+  const warningHtml = conflicts.length ? `
+    <div class="warn-box show" style="margin-bottom:14px">
+      ⚠ <b>Fiches non cumulables détectées dans ce dossier :</b><br>
+      ${conflicts.map(([a,b])=>`${a} et ${b}`).join('<br>')}
+    </div>` : '';
+
+  // Initialiser la sélection par défaut (première ligne "hi"/"cdp", sinon aucune)
+  cart.forEach(s=>{
+    if(!(s.id in dossierSelections)){
+      const hiIdx = s.results.findIndex(r=>r[2]);
+      dossierSelections[s.id] = hiIdx >= 0 ? hiIdx : null;
+    }
+  });
+
+  const cols = cart.map((s,i) => `
+    <div class="compare-col">
+      <div class="compare-col-head">
+        <button class="compare-col-remove" onclick="removeFromCart(${i})" title="Retirer">✕</button>
+        <div class="cc-code">${s.code}</div>
+        <div class="cc-title">${s.title}</div>
+        <div class="cc-date">${s.date}</div>
+      </div>
+      <div class="compare-section-label">Paramètres</div>
+      ${s.params.map(([l,v])=>`
+        <div class="compare-row">
+          <span class="cr-label">${l}</span>
+          <span class="cr-value">${v}</span>
+        </div>`).join('')}
+      <div class="compare-section-label">Résultats — cocher la ligne à inclure au total du dossier</div>
+      ${s.results.map(([l,v],ri)=>`
+        <div class="compare-row result" style="display:flex;align-items:center;gap:6px">
+          <input type="radio" name="dossier-${s.id}" value="${ri}" ${dossierSelections[s.id]===ri?'checked':''}
+            onchange="setDossierSelection('${s.id}', ${ri})" style="flex-shrink:0">
+          <span class="cr-label" style="flex:1">${l}</span>
+          <span class="cr-value">${v}</span>
+        </div>`).join('')}
+      <div class="compare-row" style="display:flex;align-items:center;gap:6px">
+        <input type="radio" name="dossier-${s.id}" value="-1" ${dossierSelections[s.id]==null?'checked':''}
+          onchange="setDossierSelection('${s.id}', null)" style="flex-shrink:0">
+        <span class="cr-label" style="flex:1;font-style:italic">Ne pas inclure au total</span>
+      </div>
+    </div>
+  `).join('');
+
+  const total = cart.reduce((sum,s)=>{
+    const idx = dossierSelections[s.id];
+    if(idx == null || !s.results[idx]) return sum;
+    return sum + parseEuroVal(s.results[idx][1]);
+  }, 0);
+
+  list.innerHTML = `
+    ${warningHtml}
+    <div class="dossier-total">📁 Total du dossier (lignes cochées) : <b>${total.toLocaleString('fr-FR')} €</b></div>
+    <div class="compare-grid">${cols}</div>
+  `;
+}
+function setDossierSelection(id, idx){
+  dossierSelections[id] = idx === null ? null : parseInt(idx,10);
+  renderCompareTable();
+}
+function removeFromCart(i){ cart.splice(i,1); saveCart(); updateCartUI(); }
+function clearCart(){ cart = []; dossierSelections = {}; saveCart(); updateCartUI(); }
+function openCart(){ renderCompareTable(); document.getElementById('cartOverlay').classList.add('open'); }
+function closeCart(){ document.getElementById('cartOverlay').classList.remove('open'); }
+function downloadCartPDF(){
+  if(cart.length === 0) return;
+  printDocument(cart);
+}
+
+function snapshotToHTML(s, isLast){
+  return `
+    <div class="print-doc-header">
+      <h1>Simulateur CEE — EBS Énergie</h1>
+      <p>Estimation indicative générée le ${s.date}</p>
+    </div>
+    <div class="print-fiche-title">${s.code} — ${s.title}</div>
+    <div class="print-section-title">📋 Paramètres du projet saisis</div>
+    <table class="print-table">
+      ${s.params.map(([l,v])=>`<tr><td class="pt-label">${l}</td><td class="pt-value">${v}</td></tr>`).join('')}
+    </table>
+    <div class="print-section-title">💶 Résultats de la simulation</div>
+    <table class="print-table results">
+      ${s.results.map(([l,v])=>`<tr><td class="pt-label">${l}</td><td class="pt-value">${v}</td></tr>`).join('')}
+    </table>
+    <div class="print-footer">Estimation indicative et non contractuelle — EBS Énergie ne saurait être tenue responsable des écarts avec le montant de prime effectivement obtenu, lequel dépend de l'obligé CEE retenu, de l'éligibilité réelle des travaux et de la réglementation en vigueur au moment de l'engagement.</div>
+    ${isLast ? '' : '<div class="print-page-break"></div>'}
+  `;
+}
+
+function printDocument(snapshots){
+  const area = document.getElementById('printArea');
+  area.innerHTML = snapshots.map((s,i)=>snapshotToHTML(s, i===snapshots.length-1)).join('');
+  window.print();
+}
+
+function printBaremeTable(ficheCode, ficheTitle, tableOuterHTML){
+  const area = document.getElementById('printArea');
+  area.innerHTML = `
+    <div class="print-doc-header">
+      <h1>Simulateur CEE — EBS Énergie</h1>
+      <p>Barème complet — généré le ${new Date().toLocaleString('fr-FR')}</p>
+    </div>
+    <div class="print-fiche-title">${ficheCode} — ${ficheTitle}</div>
+    ${tableOuterHTML}
+    <div class="print-footer">Estimation indicative et non contractuelle — EBS Énergie ne saurait être tenue responsable des écarts avec le montant de prime effectivement obtenu, lequel dépend de l'obligé CEE retenu, de l'éligibilité réelle des travaux et de la réglementation en vigueur au moment de l'engagement.</div>
+  `;
+  window.print();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// TÉLÉCHARGEMENT PDF UNIFIÉ — simulation / barème / tableau évolutif / tout
+// ═══════════════════════════════════════════════════════════════════════
+function downloadSimPDF(opt){
+  const s = captureSnapshot();
+  let html = `
+    <div class="print-doc-header">
+      <h1>Simulateur CEE — EBS Énergie</h1>
+      <p>Estimation indicative générée le ${s.date}</p>
+    </div>
+    <div class="print-fiche-title">${s.code} — ${s.title}</div>
+    <div class="print-section-title">📋 Paramètres du projet saisis</div>
+    <table class="print-table">
+      ${s.params.map(([l,v])=>`<tr><td class="pt-label">${l}</td><td class="pt-value">${v}</td></tr>`).join('')}
+    </table>
+    <div class="print-section-title">💶 Résultats de la simulation</div>
+    <table class="print-table results">
+      ${s.results.map(([l,v])=>`<tr><td class="pt-label">${l}</td><td class="pt-value">${v}</td></tr>`).join('')}
+    </table>
+  `;
+
+  if(opt === 'bareme' || opt === 'all'){
+    const wrap = simBody.querySelector('#baremeWrap');
+    if(wrap){
+      wrap.forceBuild();
+      const table = wrap.querySelector('table.bareme');
+      if(table) html += `<div class="print-section-title">📊 Barème complet</div>${table.outerHTML}`;
+    }
+  }
+  if(opt === 'adj' || opt === 'all'){
+    const adjWrapEl = simBody.querySelector('#adjTableWrap');
+    if(adjWrapEl){
+      const table = adjWrapEl.querySelector('table.surftbl');
+      const stepEl = document.getElementById('adjStep');
+      const repEl = document.getElementById('adjRep');
+      const stepVal = stepEl ? stepEl.value : '';
+      const repVal = repEl ? repEl.value : '';
+      if(table) html += `<div class="print-section-title">📈 Tableau évolutif (écart ${stepVal}, ${repVal} lignes ajoutées)</div>${table.outerHTML}`;
+    }
+  }
+
+  html += `<div class="print-footer">Estimation indicative et non contractuelle — EBS Énergie ne saurait être tenue responsable des écarts avec le montant de prime effectivement obtenu, lequel dépend de l'obligé CEE retenu, de l'éligibilité réelle des travaux et de la réglementation en vigueur au moment de l'engagement.</div>`;
+
+  const area = document.getElementById('printArea');
+  area.innerHTML = html;
+  window.print();
+}
+updateCartUI();
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER: BAR-TH-171 (PAC individuelle)
+// ═══════════════════════════════════════════════════════════════════════
+const REF171 = {
+  H1:{maison:{'<70':[54500,65500],'70-90':[76400,91700],'>=90':[109100,131000]},
+      appt:{'<35':[29200,35300],'35-60':[40900,49500],'>=60':[58400,70700]}},
+  H2:{maison:{'<70':[45400,54600],'70-90':[63600,76400],'>=90':[90800,109100]},
+      appt:{'<35':[24300,29400],'35-60':[34100,41200],'>=60':[48600,58900]}},
+  H3:{maison:{'<70':[31800,38200],'70-90':[44500,53500],'>=90':[63600,76400]},
+      appt:{'<35':[17000,20600],'35-60':[23900,28900],'>=60':[34000,41200]}},
+};
+
+function renderTH171(body){
+  body.insertAdjacentHTML('beforeend', `
+    <div class="cond-box"><b>Conditions :</b> Etas ≥ 111% (MT/HT) ou ≥ 126% (BT) · Régulateur classe IV-VIII obligatoire · Note de dimensionnement</div>
+  `);
+  body.insertAdjacentHTML('beforeend', `
+    <div class="field-row">
+      <div class="field"><label>Zone climatique</label>
+        <select id="f-zone"><option>H1</option><option>H2</option><option>H3</option></select>
+      </div>
+      <div class="field"><label>Type de logement</label>
+        <select id="f-type"><option value="maison">Maison</option><option value="appt">Appartement</option></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Surface (m²)</label><input type="number" id="f-surf" value="100"></div>
+      <div class="field"><label>Etas de la PAC (%)</label><input type="number" id="f-etas" value="140"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Prix Classique <span class="hint">€/MWhc</span></label><input type="number" id="f-pc" value="" step="0.1" placeholder="ex : 7,8"></div>
+      <div class="field"><label>Prix Précarité <span class="hint">€/MWhc</span></label><input type="number" id="f-pp" value="" step="0.1" placeholder="ex : 11"></div>
+    </div>
+    <div class="field">
+      <label>Coup de Pouce ×5 <span class="hint">(remplacement chaudière fossile)</span></label>
+      <select id="f-cdp"><option value="oui">Oui</option><option value="non">Non</option></select>
+    </div>
+    <div class="divider"></div>
+    <div class="results" id="results"></div>
+    <div class="source-note">Source : BAR-TH-171 vA78.4 · Cumul CEE + MaPrimeRénov' plafonné à 12 000 €</div>
+  `);
+  const baremeWrap = bareme(body, buildBareme171);
+
+  function surfBand(type, surf){
+    if(type==='maison') return surf<70?'<70':(surf<90?'70-90':'>=90');
+    return surf<35?'<35':(surf<60?'35-60':'>=60');
+  }
+  function calcCore171(surf){
+    const zone=document.getElementById('f-zone').value;
+    const type=document.getElementById('f-type').value;
+    const etas=parseFloat(document.getElementById('f-etas').value)||0;
+    const pc=parseFloat(document.getElementById('f-pc').value)||0;
+    const pp=parseFloat(document.getElementById('f-pp').value)||0;
+    const cdp=document.getElementById('f-cdp').value==='oui';
+    const band = surfBand(type, surf);
+    const idx = etas>=140 ? 1 : 0;
+    const kwhc = REF171[zone][type][band][idx];
+    const mult = cdp ? 5 : 1;
+    return {kwh: kwhc, primeC: kwhc/1000*pc*mult, primeP: kwhc/1000*pp*mult, cdp};
+  }
+  let adjWrap;
+  let revWrap;
+  function calc(){
+    const surf=parseFloat(document.getElementById('f-surf').value)||0;
+    const {kwh:kwhc, primeC, primeP, cdp} = calcCore171(surf);
+    document.getElementById('results').innerHTML = `
+      <div class="result-row"><span class="result-label">kWh cumac</span><span class="result-val" style="font-size:14px">${kwh(kwhc)}</span></div>
+      <div class="result-row ${cdp?'cdp':'hi'}"><span class="result-label">Prime Classique ${cdp?'(CdP ×5)':''}</span><span class="result-val">${eur(primeC)}</span></div>
+      <div class="result-row prec"><span class="result-label">Prime Précarité ${cdp?'(CdP ×5)':''}</span><span class="result-val">${eur(primeP)}</span></div>
+    `;
+
+    if(!adjWrap){
+      adjWrap = adjustableTable(body, {
+        unitLabel:'m²', paramLabel:'Surface', defaultStep:10, defaultRep:2,
+        getBase: () => parseFloat(document.getElementById('f-surf').value)||0,
+        minValid: 0,
+        primeLabel:'Prime Classique', extraLabel:'Prime Précarité',
+        calc: (val) => { const r = calcCore171(val); return {kwh:r.kwh, prime:r.primeC, extra:r.primeP}; }
+      });
+    } else {
+      adjWrap.refresh();
+    }
+
+    if(!revWrap){
+      revWrap = reverseSolver(body, {
+        quantityLabel:'surface', unitLabel:'m²', min:0, max:1000, hasPrec:true,
+        calc: (val) => { const r = calcCore171(val); return {primeC:r.primeC, primeP:r.primeP}; }
+      });
+    } else {
+      revWrap.refresh();
+    }
+
+    baremeWrap.refresh();
+  }
+  body.querySelectorAll('input,select').forEach(i=>i.addEventListener('input',calc));
+  calc();
+}
+
+function buildBareme171(wrap){
+  const pc=parseFloat(document.getElementById('f-pc').value)||0;
+  const pp=parseFloat(document.getElementById('f-pp').value)||0;
+  const curZone=document.getElementById('f-zone').value;
+  const curType=document.getElementById('f-type').value;
+  const curSurf=parseFloat(document.getElementById('f-surf').value)||0;
+  const curEtas=parseFloat(document.getElementById('f-etas').value)||0;
+  const curIdx = curEtas>=140?1:0;
+  const curBand = curType==='maison'
+    ? (curSurf<70?'<70':(curSurf<90?'70-90':'>=90'))
+    : (curSurf<35?'<35':(curSurf<60?'35-60':'>=60'));
+
+  const rows = [
+    {type:'maison', label:'Maison', bands:[['< 70 m²','<70'],['70–90 m²','70-90'],['≥ 90 m²','>=90']]},
+    {type:'appt', label:'Appartement', bands:[['< 35 m²','<35'],['35–60 m²','35-60'],['≥ 60 m²','>=60']]},
+  ];
+  let html = `<table class="bareme"><thead><tr>
+    <th>Zone</th><th>Type</th><th>Surface</th>
+    <th>kWh cumac<br>Etas1 / Etas2</th>
+    <th>Classique<br>Etas1 / Etas2</th>
+    <th>Précarité<br>Etas1 / Etas2</th>
+    <th>CdP ×5 Classique<br>Etas1 / Etas2</th>
+    <th>CdP ×5 Précarité<br>Etas1 / Etas2</th>
+  </tr></thead><tbody>`;
+  ['H1','H2','H3'].forEach(zone=>{
+    rows.forEach(grp=>{
+      grp.bands.forEach(([label,bandKey],i)=>{
+        const [e1,e2] = REF171[zone][grp.type][bandKey];
+        const isCur = zone===curZone && grp.type===curType && bandKey===curBand;
+        html += `<tr class="${isCur?'hl':''}">`;
+        if(grp.type==='maison' && i===0){
+          html += `<td class="zone-cell z-${zone.toLowerCase()}" rowspan="6">${zone}</td>`;
+        }
+        html += `<td style="text-align:left;font-weight:${i===0?'700':'400'}">${i===0?grp.label:''}</td>`;
+        html += `<td>${label}</td>`;
+        html += `<td>${num(e1)} / ${num(e2)}</td>`;
+        html += `<td class="num-c">${eur(e1/1000*pc)} / ${eur(e2/1000*pc)}</td>`;
+        html += `<td class="num-p">${eur(e1/1000*pp)} / ${eur(e2/1000*pp)}</td>`;
+        html += `<td class="num-cdp">${eur(e1/1000*pc*5)} / ${eur(e2/1000*pc*5)}</td>`;
+        html += `<td class="num-cdp">${eur(e1/1000*pp*5)} / ${eur(e2/1000*pp*5)}</td>`;
+        html += `</tr>`;
+      });
+    });
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER: BAR-TH-179 (PAC collective)
+// ═══════════════════════════════════════════════════════════════════════
+const REF179 = {
+  '111-126':{H1:[100000,146000],H2:[84000,127000],H3:[60000,100000]},
+  '126-150':{H1:[107000,155000],H2:[89000,135000],H3:[64000,107000]},
+  '150-175':{H1:[112000,163000],H2:[93000,142000],H3:[67000,112000]},
+  '175-190':{H1:[115000,167000],H2:[96000,146000],H3:[69000,115000]},
+  '190+':{H1:[117000,170000],H2:[97000,148000],H3:[70000,117000]},
+};
+function etasKey179(e){
+  if(e<126) return '111-126';
+  if(e<150) return '126-150';
+  if(e<175) return '150-175';
+  if(e<190) return '175-190';
+  return '190+';
+}
+function renderTH179(body){
+  body.insertAdjacentHTML('beforeend', `<div class="cond-box"><b>Conditions :</b> PAC collective ≤ 400 kW · Etas ≥ 111% (MT/HT) ou ≥ 126% (BT) · Note de dimensionnement à l'achèvement</div>`);
+  body.insertAdjacentHTML('beforeend', `
+    <div class="field-row">
+      <div class="field"><label>Zone climatique</label><select id="f-zone"><option>H1</option><option>H2</option><option>H3</option></select></div>
+      <div class="field"><label>Usage</label><select id="f-usage"><option value="0">Chauffage seul</option><option value="1">Chauffage + ECS</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Etas de la PAC (%)</label><input type="number" id="f-etas" value="140"></div>
+      <div class="field"><label>Nombre de logements</label><input type="number" id="f-n" value="30"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Puissance PAC <span class="hint">kW</span></label><input type="number" id="f-ppac" value="200"></div>
+      <div class="field"><label>Puissance chaufferie <span class="hint">kW</span></label><input type="number" id="f-pch" value="400"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Prix Classique <span class="hint">€/MWhc</span></label><input type="number" id="f-pc" value="" step="0.1" placeholder="ex : 7,8"></div>
+      <div class="field"><label>Prix Précarité <span class="hint">€/MWhc</span></label><input type="number" id="f-pp" value="" step="0.1" placeholder="ex : 11"></div>
+    </div>
+    <div class="field">
+      <label>Coup de Pouce ×3</label><select id="f-cdp"><option value="oui">Oui</option><option value="non">Non</option></select>
+    </div>
+    <div class="divider"></div>
+    <div class="results" id="results"></div>
+    <div class="source-note">Source : BAR-TH-179 vA75.1 · R = 1 si Ppac/Pch ≥ 0,40, sinon R = Ppac/Pch</div>
+  `);
+  const baremeWrap = bareme(body, buildBareme179);
+
+  function calcCore179(n){
+    const zone=document.getElementById('f-zone').value;
+    const usage=parseInt(document.getElementById('f-usage').value);
+    const etas=parseFloat(document.getElementById('f-etas').value)||0;
+    const ppac=parseFloat(document.getElementById('f-ppac').value)||0;
+    const pch=parseFloat(document.getElementById('f-pch').value)||1;
+    const pc=parseFloat(document.getElementById('f-pc').value)||0;
+    const pp=parseFloat(document.getElementById('f-pp').value)||0;
+    const cdp=document.getElementById('f-cdp').value==='oui';
+    const R = (ppac/pch)>=0.4 ? 1 : ppac/pch;
+    const kwhc = REF179[etasKey179(etas)][zone][usage];
+    const total = kwhc*n*R;
+    const mult = cdp?3:1;
+    return {kwh: total, primeC: total/1000*pc*mult, primeP: total/1000*pp*mult, R, cdp, n};
+  }
+  let adjWrap;
+  let revWrap;
+  function calc(){
+    const n=parseFloat(document.getElementById('f-n').value)||0;
+    const {kwh:total, primeC, primeP, R, cdp} = calcCore179(n);
+    document.getElementById('results').innerHTML = `
+      <div class="result-row"><span class="result-label">Facteur R</span><span class="result-val" style="font-size:14px">${R.toFixed(2)}</span></div>
+      <div class="result-row"><span class="result-label">kWh cumac total</span><span class="result-val" style="font-size:14px">${kwh(total)}</span></div>
+      <div class="result-row ${cdp?'cdp':'hi'}"><span class="result-label">Prime Classique ${cdp?'(CdP ×3)':''}</span><span class="result-val">${eur(primeC)}</span></div>
+      <div class="result-row prec"><span class="result-label">Prime Précarité ${cdp?'(CdP ×3)':''}</span><span class="result-val">${eur(primeP)}</span></div>
+      <div class="result-row"><span class="result-label">Prime Classique / logement</span><span class="result-val" style="font-size:14px">${n>0?eur(primeC/n):'—'}</span></div>
+    `;
+
+    if(!adjWrap){
+      adjWrap = adjustableTable(body, {
+        unitLabel:'logts', paramLabel:'Nb logements', defaultStep:5, defaultRep:2,
+        getBase: () => parseFloat(document.getElementById('f-n').value)||0,
+        minValid: 1,
+        primeLabel:'Prime Classique', extraLabel:'Prime Précarité',
+        calc: (val) => { const r = calcCore179(Math.round(val)); return {kwh:r.kwh, prime:r.primeC, extra:r.primeP}; }
+      });
+    } else {
+      adjWrap.refresh();
+    }
+
+    if(!revWrap){
+      revWrap = reverseSolver(body, {
+        quantityLabel:'nombre de logements', unitLabel:'logts', integer:true, min:1, max:2000, hasPrec:true,
+        calc: (val) => { const r = calcCore179(Math.round(val)); return {primeC:r.primeC, primeP:r.primeP}; }
+      });
+    } else {
+      revWrap.refresh();
+    }
+
+    baremeWrap.refresh();
+  }
+  body.querySelectorAll('input,select').forEach(i=>i.addEventListener('input',calc));
+  calc();
+}
+
+const ETAS179_LABELS = {
+  '111-126':'111% ≤ Etas < 126%', '126-150':'126% ≤ Etas < 150%', '150-175':'150% ≤ Etas < 175%',
+  '175-190':'175% ≤ Etas < 190%', '190+':'190% ≤ Etas',
+};
+function buildBareme179(wrap){
+  const pc=parseFloat(document.getElementById('f-pc').value)||0;
+  const pp=parseFloat(document.getElementById('f-pp').value)||0;
+  const curZone=document.getElementById('f-zone').value;
+  const curEtas=parseFloat(document.getElementById('f-etas').value)||0;
+  const curEtasKey=etasKey179(curEtas);
+  let html = `<table class="bareme"><thead><tr>
+    <th>Classe Etas</th><th>Zone</th>
+    <th>kWhc/logt<br>Chauffage</th><th>kWhc/logt<br>Chauff.+ECS</th>
+    <th>Classique<br>Chauffage</th><th>Classique<br>Chauff.+ECS</th>
+    <th>Précarité<br>Chauffage</th><th>Précarité<br>Chauff.+ECS</th>
+    <th>CdP ×3 Classique<br>Chauffage</th><th>CdP ×3 Classique<br>Chauff.+ECS</th>
+    <th>CdP ×3 Précarité<br>Chauffage</th><th>CdP ×3 Précarité<br>Chauff.+ECS</th>
+  </tr></thead><tbody>`;
+  Object.keys(REF179).forEach(ek=>{
+    ['H1','H2','H3'].forEach((zone,i)=>{
+      const [kc,ke] = REF179[ek][zone];
+      const isCur = ek===curEtasKey && zone===curZone;
+      html += `<tr class="${isCur?'hl':''}">`;
+      if(i===0) html += `<td rowspan="3" style="text-align:left;font-weight:700">${ETAS179_LABELS[ek]}</td>`;
+      html += `<td class="zone-cell z-${zone.toLowerCase()}">${zone}</td>`;
+      html += `<td>${num(kc)}</td><td>${num(ke)}</td>`;
+      html += `<td class="num-c">${eur(kc/1000*pc)}</td><td class="num-c">${eur(ke/1000*pc)}</td>`;
+      html += `<td class="num-p">${eur(kc/1000*pp)}</td><td class="num-p">${eur(ke/1000*pp)}</td>`;
+      html += `<td class="num-cdp">${eur(kc/1000*pc*3)}</td><td class="num-cdp">${eur(ke/1000*pc*3)}</td>`;
+      html += `<td class="num-cdp">${eur(kc/1000*pp*3)}</td><td class="num-cdp">${eur(ke/1000*pp*3)}</td>`;
+      html += `</tr>`;
+    });
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER: BAT-TH-163 (PAC tertiaire)
+// ═══════════════════════════════════════════════════════════════════════
+function renderBAT163(body){
+  body.insertAdjacentHTML('beforeend', `<div class="cond-box"><b>Conditions :</b> PAC tertiaire · Pas de précarité en tertiaire · ≤ 400 kW → seuil sur Etas · &gt; 400 kW → seuil sur COP (EN 14511-2) · Facteur secteur et facteur R applicables</div>`);
+  body.insertAdjacentHTML('beforeend', `
+    <div class="field-row">
+      <div class="field"><label>Zone climatique</label><select id="f-zone"><option>H1</option><option>H2</option><option>H3</option></select></div>
+      <div class="field"><label>Puissance thermique nominale PAC <span class="hint">kW — total installé</span></label><input type="number" id="f-ppac" value="200"></div>
+    </div>
+    <div class="field-row">
+      <div class="field" id="field-etas"><label>Etas de la PAC (%)</label><input type="number" id="f-etas" value="140"></div>
+      <div class="field" id="field-cop" style="display:none"><label>COP de la PAC <span class="hint">EN 14511-2</span></label><input type="number" id="f-cop" value="4" step="0.1"></div>
+      <div class="field"><label>Secteur d'activité</label>
+        <select id="f-sect"><option value="1.2">Bureaux (×1,2)</option><option value="1.1">Santé (×1,1)</option>
+        <option value="0.8">Enseignement (×0,8)</option><option value="0.9">Commerces (×0,9)</option>
+        <option value="0.7">Hôtellerie-Restauration (×0,7)</option><option value="0.7">Autres (×0,7)</option></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Surface totale chauffée <span class="hint">m²</span></label><input type="number" id="f-surf" value="1000"></div>
+      <div class="field"><label>Puissance chaufferie <span class="hint">kW — total après travaux</span></label><input type="number" id="f-pch" value="400"></div>
+    </div>
+    <div class="field"><label>Prix Classique <span class="hint">€/MWhc</span></label><input type="number" id="f-pc" value="" step="0.1" placeholder="ex : 7,8"></div>
+    <div class="divider"></div>
+    <div class="results" id="results"></div>
+    <div class="source-note">Source : BAT-TH-163 vA81-2 · DV : 22 ans · Prime toujours calculée sur la surface totale (jamais un prix au m²)</div>
+  `);
+  const baremeWrap = bareme(body, buildBareme163);
+
+  const ppacInput = document.getElementById('f-ppac');
+  function toggleRegime(){
+    const gt400 = (parseFloat(ppacInput.value)||0) > 400;
+    document.getElementById('field-etas').style.display = gt400 ? 'none' : '';
+    document.getElementById('field-cop').style.display = gt400 ? '' : 'none';
+  }
+  ppacInput.addEventListener('input', toggleRegime);
+
+  const FORFAIT_LE400 = {
+    '111-126': {H1:1100,H2:900,H3:600},
+    '126-175': {H1:1200,H2:1000,H3:700},
+    '175+':    {H1:1300,H2:1000,H3:700},
+  };
+  const FORFAIT_GT400 = {
+    '3.4-4.5': {H1:1100,H2:900,H3:600},
+    '4.5+':    {H1:1200,H2:1000,H3:700},
+  };
+
+  function calcCore163(surf){
+    const zone=document.getElementById('f-zone').value;
+    const sect=parseFloat(document.getElementById('f-sect').value);
+    const pc=parseFloat(document.getElementById('f-pc').value)||0;
+    const ppac=parseFloat(document.getElementById('f-ppac').value)||0;
+    const pch=parseFloat(document.getElementById('f-pch').value)||1;
+    const gt400 = ppac > 400;
+
+    let brut;
+    if(gt400){
+      const cop=parseFloat(document.getElementById('f-cop').value)||0;
+      brut = FORFAIT_GT400[cop>=4.5 ? '4.5+' : '3.4-4.5'][zone];
+    } else {
+      const etas=parseFloat(document.getElementById('f-etas').value)||0;
+      const band = etas<126 ? '111-126' : (etas<175 ? '126-175' : '175+');
+      brut = FORFAIT_LE400[band][zone];
+    }
+
+    const R = (ppac/pch)>=0.4 ? 1 : ppac/pch;
+    const kwhc = brut*sect*surf*R;
+    return {kwh: kwhc, prime: kwhc/1000*pc, R, gt400};
+  }
+  let adjWrap;
+  let revWrap;
+  function calc(){
+    const surf=parseFloat(document.getElementById('f-surf').value)||0;
+    const {kwh:kwhc, prime, R, gt400} = calcCore163(surf);
+    document.getElementById('results').innerHTML = `
+      <div class="result-row"><span class="result-label">Régime</span><span class="result-val" style="font-size:14px">${gt400?'&gt; 400 kW (COP)':'≤ 400 kW (Etas)'}</span></div>
+      <div class="result-row"><span class="result-label">Facteur R</span><span class="result-val" style="font-size:14px">${R.toFixed(2)}</span></div>
+      <div class="result-row"><span class="result-label">kWh cumac total</span><span class="result-val" style="font-size:14px">${kwh(kwhc)}</span></div>
+      <div class="result-row hi"><span class="result-label">Prime Classique (totale)</span><span class="result-val">${eur(prime)}</span></div>
+    `;
+
+    if(!adjWrap){
+      adjWrap = adjustableTable(body, {
+        unitLabel:'m²', paramLabel:'Surface', defaultStep:50, defaultRep:2,
+        getBase: () => parseFloat(document.getElementById('f-surf').value)||0,
+        minValid: 0,
+        calc: (val) => { const r = calcCore163(val); return {kwh:r.kwh, prime:r.prime}; }
+      });
+    } else {
+      adjWrap.refresh();
+    }
+
+    if(!revWrap){
+      revWrap = reverseSolver(body, {
+        quantityLabel:'surface', unitLabel:'m²', min:0, max:50000,
+        calc: (val) => { const r = calcCore163(val); return {prime:r.prime}; }
+      });
+    } else {
+      revWrap.refresh();
+    }
+
+    baremeWrap.refresh();
+  }
+  toggleRegime();
+  body.querySelectorAll('input,select').forEach(i=>i.addEventListener('input',calc));
+  calc();
+}
+
+function buildBareme163(wrap){
+  const curZone=document.getElementById('f-zone').value;
+  const curPpac=parseFloat(document.getElementById('f-ppac').value)||0;
+  const curGt400 = curPpac > 400;
+  const curEtas=parseFloat(document.getElementById('f-etas').value)||0;
+  const curCop=parseFloat(document.getElementById('f-cop').value)||0;
+
+  let html = `<table class="bareme"><thead><tr>
+    <th colspan="5">PAC de puissance thermique nominale ≤ 400 kW — seuil sur Etas</th>
+  </tr><tr>
+    <th>Zone</th><th>111%≤Etas&lt;126%</th><th>126%≤Etas&lt;175%</th><th>175%≤Etas</th><th></th>
+  </tr></thead><tbody>`;
+  ['H1','H2','H3'].forEach(zone=>{
+    const isCur = !curGt400 && zone===curZone;
+    const bandCur = curEtas<126?'111-126':(curEtas<175?'126-175':'175+');
+    html += `<tr class="${isCur?'hl':''}">
+      <td class="zone-cell z-${zone.toLowerCase()}">${zone}</td>
+      <td ${isCur&&bandCur==='111-126'?'style="box-shadow:inset 0 0 0 1.5px #E8C15A"':''}>${num({H1:1100,H2:900,H3:600}[zone])}</td>
+      <td ${isCur&&bandCur==='126-175'?'style="box-shadow:inset 0 0 0 1.5px #E8C15A"':''}>${num({H1:1200,H2:1000,H3:700}[zone])}</td>
+      <td ${isCur&&bandCur==='175+'?'style="box-shadow:inset 0 0 0 1.5px #E8C15A"':''}>${num({H1:1300,H2:1000,H3:700}[zone])}</td>
+      <td></td>
+    </tr>`;
+  });
+  html += `</tbody></table><div style="height:14px"></div><table class="bareme"><thead><tr>
+    <th colspan="4">PAC de puissance thermique nominale &gt; 400 kW — seuil sur COP (EN 14511-2)</th>
+  </tr><tr>
+    <th>Zone</th><th>3,4≤COP&lt;4,5</th><th>4,5≤COP</th><th></th>
+  </tr></thead><tbody>`;
+  ['H1','H2','H3'].forEach(zone=>{
+    const isCur = curGt400 && zone===curZone;
+    const bandCur = curCop>=4.5?'4.5+':'3.4-4.5';
+    html += `<tr class="${isCur?'hl':''}">
+      <td class="zone-cell z-${zone.toLowerCase()}">${zone}</td>
+      <td ${isCur&&bandCur==='3.4-4.5'?'style="box-shadow:inset 0 0 0 1.5px #E8C15A"':''}>${num({H1:1100,H2:900,H3:600}[zone])}</td>
+      <td ${isCur&&bandCur==='4.5+'?'style="box-shadow:inset 0 0 0 1.5px #E8C15A"':''}>${num({H1:1200,H2:1000,H3:700}[zone])}</td>
+      <td></td>
+    </tr>`;
+  });
+  html += `</tbody></table>
+  <div style="padding:10px 12px;font-size:10.5px;color:var(--text-3);line-height:1.6">
+    Valeurs en kWh cumac par m² de surface chauffée. La prime réelle = ce forfait × facteur secteur × surface totale chauffée × facteur R × prix ÷ 1 000 — jamais un prix affiché « au m² ».
+  </div>`;
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER: BAR-TH-177 (Rénovation globale)
+// ═══════════════════════════════════════════════════════════════════════
+function renderTH177(body){
+  body.insertAdjacentHTML('beforeend', `<div class="cond-box"><b>Conditions :</b> Cep après travaux &lt; 331 kWh/m².an · Gain énergétique ≥ 35% en énergie primaire · Émissions GES après ≤ avant</div>`);
+  body.insertAdjacentHTML('beforeend', `
+    <div class="field-row">
+      <div class="field"><label>Shab <span class="hint">m² après rénovation</span></label><input type="number" id="f-shab" value="1000"></div>
+      <div class="field"><label>Nombre de logements</label><input type="number" id="f-n" value="30"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Ménages précaires <span class="hint">nombre</span></label><input type="number" id="f-np" value="0"></div>
+      <div class="field"><label>Coup de Pouce <span class="hint">changement chauffage fossile</span></label><select id="f-cdp"><option value="oui">Oui</option><option value="non">Non</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Cep initial <span class="hint">kWh/m².an</span></label><input type="number" id="f-ci" value="250"></div>
+      <div class="field"><label>Cep projet <span class="hint">kWh/m².an</span></label><input type="number" id="f-cp" value="150"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Prix Classique <span class="hint">€/MWhc</span></label><input type="number" id="f-pc" value="" step="0.1" placeholder="ex : 7,8"></div>
+      <div class="field"><label>Prix Précarité <span class="hint">€/MWhc</span></label><input type="number" id="f-pp" value="" step="0.1" placeholder="ex : 11"></div>
+    </div>
+    <div class="divider"></div>
+    <div id="condResult"></div>
+    <div class="results" id="results" style="margin-top:10px"></div>
+    <div class="source-note">Source : BAR-TH-177 vA63-1 · Forfait fixe 2 100 kWhc/m² · CdP charte : 41 €/m² (avec chgt chauffage) / 27 €/m² (sans)</div>
+  `);
+  function calcCore177(shab){
+    const n=parseFloat(document.getElementById('f-n').value)||1;
+    const np=parseFloat(document.getElementById('f-np').value)||0;
+    const pc=parseFloat(document.getElementById('f-pc').value)||0;
+    const pp=parseFloat(document.getElementById('f-pp').value)||0;
+    const kwhc = 2100*shab;
+    const primeMix = (kwhc/1000*pp*np/n) + (kwhc/1000*pc*(n-np)/n);
+    return {kwh: kwhc, prime: primeMix};
+  }
+  let adjWrap;
+  let revWrap;
+  function calc(){
+    const shab=parseFloat(document.getElementById('f-shab').value)||0;
+    const n=parseFloat(document.getElementById('f-n').value)||1;
+    const cdp=document.getElementById('f-cdp').value==='oui';
+    const ci=parseFloat(document.getElementById('f-ci').value)||0;
+    const cp=parseFloat(document.getElementById('f-cp').value)||0;
+    const gain = ci>0 ? (ci-cp)/ci : 0;
+    const cond1 = cp<331, cond2 = gain>=0.35;
+    document.getElementById('condResult').innerHTML = `
+      <div class="result-row" style="background:${cond1?'#E9F4EC':'#FBEAEA'};border-color:${cond1?'#B9DCC2':'#EFC9C6'}">
+        <span class="result-label">Cep projet &lt; 331 kWh/m².an</span>
+        <span class="result-val" style="font-size:13px;color:${cond1?'#1E6B3A':'#B3261E'}">${cond1?'✓ Conforme':'✗ Non conforme'}</span>
+      </div>
+      <div class="result-row" style="margin-top:8px;background:${cond2?'#E9F4EC':'#FBEAEA'};border-color:${cond2?'#B9DCC2':'#EFC9C6'}">
+        <span class="result-label">Gain énergétique : ${(gain*100).toFixed(1)}%</span>
+        <span class="result-val" style="font-size:13px;color:${cond2?'#1E6B3A':'#B3261E'}">${cond2?'✓ ≥ 35%':'✗ < 35%'}</span>
+      </div>
+    `;
+    const {kwh:kwhc, prime:primeMix} = calcCore177(shab);
+    const cdpMin = cdp ? shab*41 : shab*27;
+    document.getElementById('results').innerHTML = `
+      <div class="result-row hi"><span class="result-label">Prime CEE (mix précarité/classique)</span><span class="result-val">${eur(primeMix)}</span></div>
+      <div class="result-row cdp"><span class="result-label">Minimum Coup de Pouce charte</span><span class="result-val">${eur(cdpMin)}</span></div>
+    `;
+
+    if(!adjWrap){
+      adjWrap = adjustableTable(body, {
+        unitLabel:'m²', paramLabel:'Shab', defaultStep:50, defaultRep:2,
+        getBase: () => parseFloat(document.getElementById('f-shab').value)||0,
+        minValid: 0,
+        calc: (val) => { const r = calcCore177(val); return {kwh:r.kwh, prime:r.prime}; }
+      });
+    } else {
+      adjWrap.refresh();
+    }
+
+    if(!revWrap){
+      revWrap = reverseSolver(body, {
+        quantityLabel:'Shab', unitLabel:'m²', min:0, max:50000,
+        calc: (val) => { const r = calcCore177(val); return {prime:r.prime}; }
+      });
+    } else {
+      revWrap.refresh();
+    }
+  }
+  body.querySelectorAll('input,select').forEach(i=>i.addEventListener('input',calc));
+  calc();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER: BAR-TH-168 (Solaire thermique)
+// ═══════════════════════════════════════════════════════════════════════
+function renderTH168(body){
+  body.insertAdjacentHTML('beforeend', `<div class="cond-box"><b>Conditions :</b> Pas d'appoint fossile après travaux · Capteurs vitrés (hybrides exclus) · Engagement avant 01/01/2027 pour bonification</div>`);
+  body.insertAdjacentHTML('beforeend', `
+    <div class="field-row">
+      <div class="field"><label>Zone climatique</label><select id="f-zone"><option>H1</option><option>H2</option><option>H3</option></select></div>
+      <div class="field"><label>Usage</label><select id="f-usage"><option value="ecs">ECS seule</option><option value="ch">ECS + Chauffage</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Surface capteurs <span class="hint">m²</span></label><input type="number" id="f-surf" value="10"></div>
+      <div class="field"><label>Profil du ménage</label>
+        <select id="f-profil"><option value="autre">Autre ménage (×4)</option><option value="modeste">Modeste (×5)</option><option value="tresmodeste">Très modeste (×5)</option></select>
+      </div>
+    </div>
+    <div class="warn-box" id="warnSurf"></div>
+    <div class="field-row">
+      <div class="field"><label>Prix Classique <span class="hint">€/MWhc</span></label><input type="number" id="f-pc" value="" step="0.1" placeholder="ex : 7,8"></div>
+      <div class="field"><label>Prix Précarité <span class="hint">€/MWhc</span></label><input type="number" id="f-pp" value="" step="0.1" placeholder="ex : 11"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="results" id="results"></div>
+    <div class="source-note">Source : BAR-TH-168 vA87.4 (arrêté 17/08/2026) · Non cumulable avec BAR-TH-171/172</div>
+  `);
+  addChecklist168(body);
+  const forf168 = {H1:{ecs:6000,ch:14000},H2:{ecs:7200,ch:12700},H3:{ecs:9600,ch:10300}};
+  const baremeWrap = bareme(body, w=>buildBareme168(w, forf168));
+  const SEUILS168 = {ecs:2, ch:8};
+
+  // Fonction de calcul unique — utilisée par le résultat principal ET le tableau ajustable
+  function calcCore168(surf){
+    const zone=document.getElementById('f-zone').value;
+    const usage=document.getElementById('f-usage').value;
+    const profil=document.getElementById('f-profil').value;
+    const pc=parseFloat(document.getElementById('f-pc').value)||0;
+    const pp=parseFloat(document.getElementById('f-pp').value)||0;
+    const kwhc = forf168[zone][usage]*surf;
+    const coef = profil==='autre'?4:5;
+    const prix = profil==='tresmodeste'?pp:pc;
+    const prime = kwhc/1000*prix*coef;
+    return {kwh: kwhc, prime, coef};
+  }
+
+  let adjWrap;
+  let revWrap;
+  function calc(){
+    const usage=document.getElementById('f-usage').value;
+    const surf=parseFloat(document.getElementById('f-surf').value)||0;
+    const seuil = SEUILS168[usage];
+    const warnEl = document.getElementById('warnSurf');
+    if(surf > 0 && surf < seuil){
+      warnEl.innerHTML = `⚠ <b>Surface insuffisante :</b> ${seuil} m² minimum requis pour l'usage « ${usage==='ecs'?'ECS seule':'ECS + Chauffage'} » (surface saisie : ${surf} m²) — l'opération n'est pas éligible en l'état.`;
+      warnEl.classList.add('show');
+    } else {
+      warnEl.classList.remove('show');
+    }
+    const {kwh:kwhc, prime, coef} = calcCore168(surf);
+    const profil=document.getElementById('f-profil').value;
+    document.getElementById('results').innerHTML = `
+      <div class="result-row"><span class="result-label">kWh cumac</span><span class="result-val" style="font-size:14px">${kwh(kwhc)}</span></div>
+      <div class="result-row ${profil==='tresmodeste'?'prec':'cdp'}"><span class="result-label">Prime bonifiée (×${coef})</span><span class="result-val">${eur(prime)}</span></div>
+    `;
+
+    if(!adjWrap){
+      adjWrap = adjustableTable(body, {
+        unitLabel: 'm²', paramLabel: 'Surface', defaultStep: 2, defaultRep: 2,
+        getBase: () => parseFloat(document.getElementById('f-surf').value)||0,
+        minValid: seuil,
+        calc: (val) => { const r = calcCore168(val); return {kwh:r.kwh, prime:r.prime}; }
+      });
+    } else {
+      adjWrap.refresh();
+    }
+
+    if(!revWrap){
+      revWrap = reverseSolver(body, {
+        quantityLabel: 'surface', unitLabel: 'm²', min: seuil, max: 200,
+        calc: (val) => { const r = calcCore168(val); return {prime:r.prime}; }
+      });
+    } else {
+      revWrap.refresh();
+    }
+
+    baremeWrap.refresh();
+  }
+  body.querySelectorAll('input,select').forEach(i=>i.addEventListener('input',calc));
+  calc();
+}
+
+function buildBareme168(wrap, forf){
+  const pc=parseFloat(document.getElementById('f-pc').value)||0;
+  const pp=parseFloat(document.getElementById('f-pp').value)||0;
+  const surf=parseFloat(document.getElementById('f-surf').value)||0;
+  const curZone=document.getElementById('f-zone').value;
+  const curUsage=document.getElementById('f-usage').value;
+  let html = `<table class="bareme"><thead><tr>
+    <th>Zone</th><th>Usage</th><th>kWhc/m²</th>
+    <th class="sub">Autre ménage<br>×4 Classique</th>
+    <th class="sub">Modeste<br>×5 Classique</th>
+    <th class="sub">Très modeste<br>×5 Précarité</th>
+  </tr></thead><tbody>`;
+  ['H1','H2','H3'].forEach(zone=>{
+    [['ECS seule','ecs'],['ECS + Chauffage','ch']].forEach(([label,key],i)=>{
+      const v = forf[zone][key];
+      const kwhcTotal = v*surf;
+      const isCur = zone===curZone && key===curUsage;
+      html += `<tr class="${isCur?'hl':''}">`;
+      if(i===0) html += `<td class="zone-cell z-${zone.toLowerCase()}" rowspan="2">${zone}</td>`;
+      html += `<td style="text-align:left">${label}</td><td>${num(v)}</td>`;
+      html += `<td class="num-cdp">${eur(kwhcTotal/1000*pc*4)}</td>`;
+      html += `<td class="num-cdp">${eur(kwhcTotal/1000*pc*5)}</td>`;
+      html += `<td class="num-p">${eur(kwhcTotal/1000*pp*5)}</td>`;
+      html += `</tr>`;
+    });
+  });
+  html += `</tbody></table>
+  <div style="padding:10px 12px;font-size:10.5px;color:var(--text-3);line-height:1.6">
+    Montants calculés pour la surface de capteurs actuellement saisie (${num(surf)} m²). Modifiez la surface ci-dessus pour mettre ce tableau à jour.
+  </div>`;
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER: BAR-EN-101/102/103 (Isolation résidentielle)
+// ═══════════════════════════════════════════════════════════════════════
+function renderEN(body, forfaits, hasPrec, code){
+  body.insertAdjacentHTML('beforeend', `
+    <div class="field-row">
+      <div class="field"><label>Zone climatique</label><select id="f-zone"><option>H1</option><option>H2</option><option>H3</option></select></div>
+      <div class="field"><label>Surface isolée <span class="hint">m²</span></label><input type="number" id="f-surf" value="100"></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Prix Classique <span class="hint">€/MWh</span></label><input type="number" id="f-pc" value="" step="0.1" placeholder="ex : 7,8"></div>
+      <div class="field"><label>Prix Précarité <span class="hint">€/MWh</span></label><input type="number" id="f-pp" value="" step="0.1" placeholder="ex : 11"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="results" id="results"></div>
+    <div class="source-note">Source : ${code} · Résidentiel · Durée de vie 30 ans</div>
+  `);
+  const baremeWrap = bareme(body, w=>buildBaremeEN(w, forfaits, code));
+
+  function calcCoreEN(surf){
+    const zone=document.getElementById('f-zone').value;
+    const pc=parseFloat(document.getElementById('f-pc').value)||0;
+    const pp=parseFloat(document.getElementById('f-pp').value)||0;
+    const forfait = forfaits[zone];
+    const kwhc = forfait*surf;
+    return {kwh: kwhc, primeC: kwhc/1000*pc, primeP: kwhc/1000*pp, forfait};
+  }
+  let adjWrap;
+  let revWrap;
+  function calc(){
+    const surf=parseFloat(document.getElementById('f-surf').value)||0;
+    const {kwh:kwhc, primeC, primeP, forfait} = calcCoreEN(surf);
+    document.getElementById('results').innerHTML = `
+      <div class="result-row"><span class="result-label">Forfait / kWh cumac</span><span class="result-val" style="font-size:14px">${forfait} kWhc/m² · ${kwh(kwhc)}</span></div>
+      <div class="result-row hi"><span class="result-label">Prime Classique</span><span class="result-val">${eur(primeC)}</span></div>
+      <div class="result-row prec"><span class="result-label">Prime Précarité</span><span class="result-val">${eur(primeP)}</span></div>
+    `;
+
+    if(!adjWrap){
+      adjWrap = adjustableTable(body, {
+        unitLabel:'m²', paramLabel:'Surface', defaultStep:10, defaultRep:2,
+        getBase: () => parseFloat(document.getElementById('f-surf').value)||0,
+        minValid: 0,
+        primeLabel:'Prime Classique', extraLabel:'Prime Précarité',
+        calc: (val) => { const r = calcCoreEN(val); return {kwh:r.kwh, prime:r.primeC, extra:r.primeP}; }
+      });
+    } else {
+      adjWrap.refresh();
+    }
+
+    if(!revWrap){
+      revWrap = reverseSolver(body, {
+        quantityLabel:'surface', unitLabel:'m²', min:0, max:50000, hasPrec:true,
+        calc: (val) => { const r = calcCoreEN(val); return {primeC:r.primeC, primeP:r.primeP}; }
+      });
+    } else {
+      revWrap.refresh();
+    }
+
+    baremeWrap.refresh();
+  }
+  body.querySelectorAll('input,select').forEach(i=>i.addEventListener('input',calc));
+  calc();
+}
+
+function buildBaremeEN(wrap, forfaits, code){
+  const pc=parseFloat(document.getElementById('f-pc').value)||0;
+  const pp=parseFloat(document.getElementById('f-pp').value)||0;
+  const curZone=document.getElementById('f-zone').value;
+  let html = `<table class="bareme"><thead><tr>
+    <th>Zone</th><th>kWhc/m²</th><th>Prime/m²<br>Classique</th><th>Prime/m²<br>Précarité</th>
+  </tr></thead><tbody>`;
+  ['H1','H2','H3'].forEach(zone=>{
+    const v = forfaits[zone];
+    const isCur = zone===curZone;
+    html += `<tr class="${isCur?'hl':''}">
+      <td class="zone-cell z-${zone.toLowerCase()}">${zone}</td>
+      <td>${num(v)}</td>
+      <td class="num-c">${eur2(v/1000*pc)}</td>
+      <td class="num-p">${eur2(v/1000*pp)}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER: BAT-EN-101/103 (Isolation tertiaire simple)
+// ═══════════════════════════════════════════════════════════════════════
+function renderENBat(body, forfaits, code){
+  body.insertAdjacentHTML('beforeend', `<div class="cond-box"><b>Note :</b> Pas de précarité en tertiaire · Facteur secteur applicable</div>`);
+  body.insertAdjacentHTML('beforeend', `
+    <div class="field-row">
+      <div class="field"><label>Zone climatique</label><select id="f-zone"><option>H1</option><option>H2</option><option>H3</option></select></div>
+      <div class="field"><label>Secteur d'activité</label>
+        <select id="f-sect"><option value="0.6">Bureaux/Ens./Commerces (×0,6)</option><option value="0.7">Hôtellerie-Restauration (×0,7)</option><option value="1.2">Santé (×1,2)</option><option value="0.6">Autres (×0,6)</option></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Surface isolée <span class="hint">m²</span></label><input type="number" id="f-surf" value="500"></div>
+      <div class="field"><label>Prix Classique <span class="hint">€/MWh</span></label><input type="number" id="f-pc" value="" step="0.1" placeholder="ex : 7,8"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="results" id="results"></div>
+    <div class="source-note">Source : ${code} · Tertiaire · Durée de vie 30 ans</div>
+  `);
+  const baremeWrap = bareme(body, w=>buildBaremeENBat(w, forfaits, code));
+
+  function calcCoreENBat(surf){
+    const zone=document.getElementById('f-zone').value;
+    const sect=parseFloat(document.getElementById('f-sect').value);
+    const pc=parseFloat(document.getElementById('f-pc').value)||0;
+    const forfait = forfaits[zone];
+    const kwhc = forfait*sect*surf;
+    return {kwh: kwhc, prime: kwhc/1000*pc};
+  }
+  let adjWrap;
+  let revWrap;
+  function calc(){
+    const surf=parseFloat(document.getElementById('f-surf').value)||0;
+    const {kwh:kwhc, prime} = calcCoreENBat(surf);
+    document.getElementById('results').innerHTML = `
+      <div class="result-row"><span class="result-label">kWh cumac total</span><span class="result-val" style="font-size:14px">${kwh(kwhc)}</span></div>
+      <div class="result-row hi"><span class="result-label">Prime Classique</span><span class="result-val">${eur(prime)}</span></div>
+    `;
+
+    if(!adjWrap){
+      adjWrap = adjustableTable(body, {
+        unitLabel:'m²', paramLabel:'Surface', defaultStep:50, defaultRep:2,
+        getBase: () => parseFloat(document.getElementById('f-surf').value)||0,
+        minValid: 0,
+        calc: (val) => { const r = calcCoreENBat(val); return {kwh:r.kwh, prime:r.prime}; }
+      });
+    } else {
+      adjWrap.refresh();
+    }
+
+    if(!revWrap){
+      revWrap = reverseSolver(body, {
+        quantityLabel:'surface', unitLabel:'m²', min:0, max:100000,
+        calc: (val) => { const r = calcCoreENBat(val); return {prime:r.prime}; }
+      });
+    } else {
+      revWrap.refresh();
+    }
+
+    baremeWrap.refresh();
+  }
+  body.querySelectorAll('input,select').forEach(i=>i.addEventListener('input',calc));
+  calc();
+}
+
+function buildBaremeENBat(wrap, forfaits, code){
+  const pc=parseFloat(document.getElementById('f-pc').value)||0;
+  const curZone=document.getElementById('f-zone').value;
+  const curSect=parseFloat(document.getElementById('f-sect').value);
+  const secteurs = [['Bureaux/Ens./Commerces',0.6],['Hôtellerie-Restauration',0.7],['Santé',1.2]];
+  let html = `<table class="bareme"><thead><tr>
+    <th>Zone</th><th>kWhc/m²<br>brut</th>
+    ${secteurs.map(([n])=>`<th class="sub">Prime/m²<br>${n}</th>`).join('')}
+  </tr></thead><tbody>`;
+  ['H1','H2','H3'].forEach(zone=>{
+    const v = forfaits[zone];
+    const isCur = zone===curZone;
+    html += `<tr class="${isCur?'hl':''}"><td class="zone-cell z-${zone.toLowerCase()}">${zone}</td><td>${num(v)}</td>`;
+    secteurs.forEach(([,f])=>{
+      const isCurCell = isCur && f===curSect;
+      html += `<td class="num-c" style="${isCurCell?'box-shadow:inset 0 0 0 1.5px #E8C15A':''}">${eur2(v*f/1000*pc)}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RENDER: BAT-EN-102 (Isolation murs tertiaire — élec/comb)
+// ═══════════════════════════════════════════════════════════════════════
+function renderEN102Bat(body){
+  body.insertAdjacentHTML('beforeend', `<div class="cond-box"><b>Note :</b> Deux forfaits selon énergie de chauffage · Facteur secteur applicable · Santé = ×1,3</div>`);
+  body.insertAdjacentHTML('beforeend', `
+    <div class="field-row">
+      <div class="field"><label>Zone climatique</label><select id="f-zone"><option>H1</option><option>H2</option><option>H3</option></select></div>
+      <div class="field"><label>Énergie de chauffage</label><select id="f-energie"><option value="elec">Électricité</option><option value="comb">Combustible</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Secteur d'activité</label>
+        <select id="f-sect"><option value="0.6">Bureaux/Ens./Commerces (×0,6)</option><option value="0.7">Hôtellerie-Restauration (×0,7)</option><option value="1.3">Santé (×1,3)</option></select>
+      </div>
+      <div class="field"><label>Surface isolée <span class="hint">m²</span></label><input type="number" id="f-surf" value="500"></div>
+    </div>
+    <div class="field"><label>Prix Classique <span class="hint">€/MWh</span></label><input type="number" id="f-pc" value="" step="0.1" placeholder="ex : 7,8"></div>
+    <div class="divider"></div>
+    <div class="results" id="results"></div>
+    <div class="source-note">Source : BAT-EN-102 vA64-3 · Tertiaire · Durée de vie 30 ans</div>
+  `);
+  const forf = {H1:{elec:3000,comb:4800},H2:{elec:2500,comb:3900},H3:{elec:1600,comb:2600}};
+  const baremeWrap = bareme(body, w=>buildBareme102Bat(w, forf));
+
+  function calcCore102Bat(surf){
+    const zone=document.getElementById('f-zone').value;
+    const energie=document.getElementById('f-energie').value;
+    const sect=parseFloat(document.getElementById('f-sect').value);
+    const pc=parseFloat(document.getElementById('f-pc').value)||0;
+    const forfait = forf[zone][energie];
+    const kwhc = forfait*sect*surf;
+    return {kwh: kwhc, prime: kwhc/1000*pc};
+  }
+  let adjWrap;
+  let revWrap;
+  function calc(){
+    const surf=parseFloat(document.getElementById('f-surf').value)||0;
+    const {kwh:kwhc, prime} = calcCore102Bat(surf);
+    document.getElementById('results').innerHTML = `
+      <div class="result-row"><span class="result-label">kWh cumac total</span><span class="result-val" style="font-size:14px">${kwh(kwhc)}</span></div>
+      <div class="result-row hi"><span class="result-label">Prime Classique</span><span class="result-val">${eur(prime)}</span></div>
+    `;
+
+    if(!adjWrap){
+      adjWrap = adjustableTable(body, {
+        unitLabel:'m²', paramLabel:'Surface', defaultStep:50, defaultRep:2,
+        getBase: () => parseFloat(document.getElementById('f-surf').value)||0,
+        minValid: 0,
+        calc: (val) => { const r = calcCore102Bat(val); return {kwh:r.kwh, prime:r.prime}; }
+      });
+    } else {
+      adjWrap.refresh();
+    }
+
+    if(!revWrap){
+      revWrap = reverseSolver(body, {
+        quantityLabel:'surface', unitLabel:'m²', min:0, max:100000,
+        calc: (val) => { const r = calcCore102Bat(val); return {prime:r.prime}; }
+      });
+    } else {
+      revWrap.refresh();
+    }
+
+    baremeWrap.refresh();
+  }
+  body.querySelectorAll('input,select').forEach(i=>i.addEventListener('input',calc));
+  calc();
+}
+
+function buildBareme102Bat(wrap, forf){
+  const pc=parseFloat(document.getElementById('f-pc').value)||0;
+  const curZone=document.getElementById('f-zone').value;
+  const curEnergie=document.getElementById('f-energie').value;
+  const curSect=parseFloat(document.getElementById('f-sect').value);
+  const secteurs = [['Bureaux/Ens./Commerces',0.6],['Hôtellerie-Restauration',0.7],['Santé',1.3]];
+  let html = `<table class="bareme"><thead><tr>
+    <th>Zone</th><th>Énergie</th><th>kWhc/m²<br>brut</th>
+    ${secteurs.map(([n])=>`<th class="sub">Prime/m²<br>${n}</th>`).join('')}
+  </tr></thead><tbody>`;
+  ['H1','H2','H3'].forEach(zone=>{
+    [['Électricité','elec'],['Combustible','comb']].forEach(([label,key],i)=>{
+      const v = forf[zone][key];
+      const isCur = zone===curZone && key===curEnergie;
+      html += `<tr class="${isCur?'hl':''}">`;
+      if(i===0) html += `<td class="zone-cell z-${zone.toLowerCase()}" rowspan="2">${zone}</td>`;
+      html += `<td>${label}</td><td>${num(v)}</td>`;
+      secteurs.forEach(([,f])=>{
+        const isCurCell = isCur && f===curSect;
+        html += `<td class="num-c" style="${isCurCell?'box-shadow:inset 0 0 0 1.5px #E8C15A':''}">${eur2(v*f/1000*pc)}</td>`;
+      });
+      html += `</tr>`;
+    });
+  });
+  html += `</tbody></table>`;
+  wrap.innerHTML = html;
+}
+</script>
+</body>
+</html>
